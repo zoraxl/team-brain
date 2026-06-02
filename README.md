@@ -29,17 +29,23 @@ team-brain/
 │   ├── screenshots.md
 │   ├── open-questions.md
 │   ├── claims.md
+│   ├── backlog.md
 │   └── threads.md
-├── plans/                          # phase specs from /planning (deleted by /wiki-sync after merge)
+├── plans/                          # active phase specs from /planning
 │   └── _template/
 │       └── phase-N.md
+├── archive/                        # completed lifecycle material by namespace (created lazily)
+│   └── <namespace>/
+│       ├── ideas/YYYY-MM/
+│       └── plans/YYYY-MM/
 ├── .agents/
 │   ├── README.md
 │   └── skills/
 └── wiki/
     ├── index.md
     ├── logs/
-    │   └── index.md
+    │   ├── index.md
+    │   └── synced-prs.md
     ├── product/
     ├── system/
     ├── engineering/
@@ -62,7 +68,7 @@ Local repos are the primary workflow because the skills can quickly read `CONCEP
 ## Agent Workflow
 
 ```
-/brainstorm → /planning → implement → /evaluate → /review-pr → merge → /wiki-sync
+/brainstorm → /planning → /implement → /evaluate → /review-pr → merge → /wiki-sync
 ```
 
 Each skill owns one verb. See [.agents/README.md](.agents/README.md) for the full reference.
@@ -70,15 +76,22 @@ Each skill owns one verb. See [.agents/README.md](.agents/README.md) for the ful
 | Skill | Invoke | What it does |
 |---|---|---|
 | `brainstorm` | `/brainstorm <topic>` | Explore a problem before building. Saves to `inbox/dump/` on request. |
-| `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<feature-slug>/` at `status: wip`. Phase 3: flip a phase to `status: ready to ship` once every open question is resolved or routed. |
-| `evaluate` | `/evaluate <feature-slug>` | Pre-PR gate. Maps each acceptance criterion to code; reports `complete` / `partial` / `missing` / `unclear`. Skips phases still at `status: wip`. |
+| `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<namespace>/<feature-slug>/` at `status: wip`. Phase 3: optionally flip a phase to `status: ready to ship` when a user wants to implement manually. |
+| `implement` | `/implement <phase-file-or-feature>` | Implements a phase in the target repo resolved from `repos.yaml`. If the plan is still `wip`, it resolves open questions with the user one by one before coding. Runs `/simplify` and marks the phase `implemented-pending-pr`. |
+| `simplify` | `/simplify <paths-or-diff>` | Scoped code-quality pass for recently changed implementation code. Preserves behavior while improving clarity, reuse, and maintainability. |
+| `evaluate` | `/evaluate <feature-slug>` | Optional pre-PR gate, especially for manually implemented phases. Maps each acceptance criterion to code; reports `complete` / `partial` / `missing` / `unclear`. Skips phases still at `status: wip`. |
 | `review-pr` | `/review-pr [<pr-number>]` | Pre-merge. Runs validation (lint/format/typecheck/UI), auto-detects linked issue, writes title + body + change-breakdown score, applies via `gh`. |
-| `wiki-sync` | `/wiki-sync <pr-or-doc>` | Post-merge. **PR mode**: creates/flips ADR, updates wiki pages, appends log, deletes the matching plan phase. **Doc mode**: ingests existing implemented knowledge directly. |
+| `wiki-sync` | `/wiki-sync <pr-or-doc>` | Post-merge. **PR mode**: creates/flips ADR, updates wiki pages, appends log, archives the matching lifecycle files. **Doc mode**: ingests existing implemented knowledge directly. |
 | `wiki-query` | `/wiki-query <question>` | Read-only. Searches wiki + ADRs + `repos.yaml`. Cites sources, distinguishes stable knowledge from uncertainty. |
 | `wiki-lint` | `/wiki-lint` | Periodic health audit. |
 | `wiki-adr` | `/wiki-adr` | Record an ad-hoc architecture decision outside the `/planning → /wiki-sync` flow. |
 | `wiki-runbook` | `/wiki-runbook` | Document cross-repo operational procedures. |
 | `workflow-from-chats` | `/workflow-from-chats <excerpts-or-target>` | Mine repeated chat feedback into durable workflow guidance. Routes findings to skill updates, wiki/runbook notes, planning guidance, inbox follow-ups, or no change. |
+| `create-bug-issue` | `/create-bug-issue <bug>` | Captures a bug in the appropriate GitHub repo with the `bug` label. |
+| `pr-score-log` | `/pr-score-log` | Lists merged PRs and the `review-pr` score totals from their PR bodies. |
+| `rebase-onto-main` | `/rebase-onto-main` | Safely rebases a feature branch onto the configured base branch and writes an audit report. |
+| `lifecycle-audit` | `/lifecycle-audit` | Report-first cleanup audit for historical ideas, plans, PRs, archives, and wiki-sync state. |
+| `skills-sync` | `/skills-sync` | Admin workflow for syncing registered skills from this repo to configured agent surfaces. |
 
 ## Copy-Paste Setup Prompt
 
@@ -97,6 +110,8 @@ Please read:
 Then register or follow the reusable skills in .agents/skills:
 - brainstorm
 - planning
+- implement
+- simplify
 - evaluate
 - review-pr
 - wiki-sync
@@ -105,9 +120,15 @@ Then register or follow the reusable skills in .agents/skills:
 - wiki-adr
 - wiki-runbook
 - workflow-from-chats
+- create-bug-issue
+- pr-score-log
+- rebase-onto-main
+- lifecycle-audit
+- skills-sync
 
 When I want to explore an idea, use brainstorm.
 When I want to turn a brainstorm or intent into phase specs, use planning.
+When I want to turn a phase into code, use implement.
 When I have implemented a phase and want to verify it, use evaluate.
 When I'm ready to open or update a PR, use review-pr.
 When a PR has merged and the wiki needs syncing, use wiki-sync.
@@ -116,6 +137,11 @@ When I want a wiki health pass, use wiki-lint.
 When a durable architecture/infrastructure decision needs recording outside /planning, use wiki-adr.
 When I want to document an operational procedure, use wiki-runbook.
 When repeated chat feedback should become durable workflow guidance, use workflow-from-chats.
+When I need to capture a bug for later, use create-bug-issue.
+When I need merged PR score history, use pr-score-log.
+When I need to sync a feature branch with the base branch, use rebase-onto-main.
+When old lifecycle files need cleanup, use lifecycle-audit.
+When skill copies drift across repos, use skills-sync.
 
 Preserve source authority: repo-local docs and linked sources remain authoritative; this wiki synthesizes rather than copies them.
 Track uncertainty in inbox/open-questions.md.
@@ -159,23 +185,37 @@ When a brainstorm solidifies into something worth building, use `/planning`:
 Use planning: <paste your brainstorm doc or describe the feature>
 ```
 
-`/planning` writes one detailed technical spec per phase, grouped under a feature folder: `plans/<feature-slug>/<phase-slug>.md`. Each new spec is `status: wip` — not safe to implement. When you've reviewed a phase and resolved its open questions (in-place, into `tests.md`, or into `inbox/backlog.md`), tell `/planning` to flip the phase to `ready to ship`.
+`/planning` writes one detailed technical spec per phase, grouped under a namespace and feature folder: `plans/<namespace>/<feature-slug>/<phase-slug>.md`. Use `general` when the work is not tied to a specific product, customer, domain, or workstream. Each new spec is `status: wip`.
 
-### 4. After implementation, before a PR
+If you plan to implement the phase yourself, review the plan and resolve its open questions, then tell `/planning` to flip the phase to `ready to ship`. That status means a human has reviewed the phase and it is safe to build outside the `/implement` skill.
 
-Run `/evaluate` first to verify the code matches the plan. It maps each acceptance criterion to code and reports gaps. It does **not** run lint/typecheck/UI (that's `/review-pr`) and does **not** touch the wiki.
+### 4. Implementation
 
-### 5. Before opening a PR
+You can also run `/implement` directly on a `wip` or `ready to ship` phase:
+
+```txt
+Use implement: plans/<namespace>/<feature-slug>/<phase-slug>.md
+```
+
+If the phase is still `wip`, `/implement` reads the open questions and asks you to resolve or route them one by one before coding. It then treats the resolved phase as implementation scope, resolves the target repo through `repos.yaml`, writes the code, runs `/simplify` on the changed files when available, and marks the phase `implemented-pending-pr`.
+
+### 5. After implementation, before a PR
+
+Run `/evaluate` when you implemented the phase yourself, or when you want a separate acceptance-criteria audit before opening a PR. It maps each acceptance criterion to code and reports gaps. It does **not** run lint/typecheck/UI (that's `/review-pr`) and does **not** touch the wiki.
+
+### 6. Before opening a PR
 
 Run `/review-pr` from whichever repo you're in. It runs validation, auto-detects a linked GitHub issue, and writes the PR title + body + score to GitHub. ADR work happens later in `/wiki-sync`.
 
-### 6. After merge
+### 7. After merge
 
-Run `/wiki-sync <pr>`. It creates the ADR (or flips an existing one to `accepted`), updates affected wiki pages, appends a log entry, and cleans up the matching plan phase file. If all phases in a feature folder are done, the folder is removed too.
+Run `/wiki-sync <pr>`. It creates the ADR (or flips an existing one to `accepted`), updates affected wiki pages, appends a log entry, records the PR in `wiki/logs/synced-prs.md`, and archives completed plan/source files under `archive/<namespace>/`. Active or incomplete phases stay in `plans/<namespace>/<feature-slug>/`.
 
-### 7. Periodic maintenance
+### 8. Periodic maintenance
 
 `/wiki-lint` for stale pages, dangling links, runbooks needing exact commands, and pages that no longer match implementation.
+
+Use `/lifecycle-audit` for older or messy files that predate the lifecycle metadata model. It reports proposed archive or metadata actions first and only applies changes after explicit approval.
 
 ## Rule Of Thumb
 

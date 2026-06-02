@@ -13,15 +13,30 @@ last_reviewed: YYYY-MM-DD
 #   - owns:        bullet list of components this repo is authoritative for
 #   - sources:     list of {path, feeds[, glob, note]} mapping source files
 #                  to the wiki pages they synthesize into.
+#   - validation:  optional list of commands for /review-pr and post-rebase checks
+#   - default_base_branch: optional base branch override when origin/HEAD is not enough
+#   - skill_surfaces: optional list of agent-skill surfaces this repo uses
 #
 # `repos.yaml` replaces the older prose `sources/index.md` as the canonical mapping.
 # `sources/index.md` may still exist as a human-readable narrative companion.
+# Skills also use this manifest to resolve implementation targets, issue targets,
+# PR review commands, wiki source feeds, and skill-sync destinations.
 
 repos:
   - name: repo-a
     github: <org>/repo-a
     local_path: ../repo-a
     role: implementation
+    default_base_branch: main
+    validation:
+      - <lint command>
+      - <typecheck command>
+      - <test command>
+    skill_surfaces:
+      - .agents
+      - .claude
+      - .cursor
+      - .codex
     owns:
       - <component the repo is authoritative for>
       - <another component>
@@ -39,6 +54,9 @@ repos:
     github: <org>/repo-b
     local_path: ../repo-b
     role: implementation
+    default_base_branch: main
+    validation:
+      - <repo-specific validation command>
     owns:
       - <component the repo is authoritative for>
     sources:
@@ -58,4 +76,6 @@ repos:
       - inbox (fragments, threads, claims, open questions, brainstorm dumps)
       - engineering runbooks that cross repo boundaries
     skills_home: true
+    skill_surfaces:
+      - .agents
     sources: []
