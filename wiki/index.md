@@ -9,8 +9,9 @@ Last reviewed: YYYY-MM-DD
 - [Repos manifest](../repos.yaml)
 - [Agent skills](../.agents/README.md)
 - [Maintenance log](logs/index.md)
+- [Synced PR ledger](logs/synced-prs.md)
 
-The wiki contains only **decided and implemented** knowledge. Pre-implementation material — fragments, open questions, claims, threads, brainstorm dumps — lives in [`inbox/`](../inbox/).
+The wiki contains only **decided and implemented** knowledge. Pre-implementation material — fragments, open questions, claims, backlog items, threads, brainstorm dumps — lives in [`inbox/`](../inbox/). Active phase plans live in `plans/<namespace>/<feature-slug>/`; completed lifecycle material is archived under `archive/<namespace>/`.
 
 ## Product
 

@@ -12,7 +12,7 @@ Pre-PR gate. Verifies the code matches the plan. Does **not** write docs, clean 
 Slot in the workflow:
 
 ```
-/brainstorm → /planning → implement → /evaluate → /review-pr → merge → /wiki-sync
+/brainstorm → /planning → /implement → /evaluate → /review-pr → merge → /wiki-sync
 ```
 
 Trigger phrases: "/evaluate", "evaluate the implementation", "check my work against the plan", "is this implementation done", "audit my code against the plan".
@@ -29,7 +29,7 @@ Trigger phrases: "/evaluate", "evaluate the implementation", "check my work agai
 
 The user may provide:
 
-- A plan folder, e.g. `plans/<feature-slug>/`.
+- A plan folder, e.g. `plans/<namespace>/<feature-slug>/`.
 - A feature slug.
 - An implementation repo (resolve via `repos.yaml`).
 - Specific files or commits to evaluate.
@@ -40,12 +40,12 @@ If no plan is named, list active feature folders under `plans/` and ask only if 
 
 ### Step 1 — Read the plan
 
-- List every phase file in `plans/<feature-slug>/`.
+- List every phase file in `plans/<namespace>/<feature-slug>/`.
 - For each file, check the frontmatter `status:` value:
   - `ready to ship` → include in evaluation.
   - `wip` → skip; record in output as "skipped (still wip)".
 - For each `ready to ship` phase, extract goals, scope, out-of-scope items, acceptance criteria, key design decisions, and stated implementation paths.
-- If `plans/<feature-slug>/tests.md` exists, read its open entries — these are empirical questions that may have been answered during implementation; flag any that should now be resolved.
+- If `plans/<namespace>/<feature-slug>/tests.md` exists, read its open entries — these are empirical questions that may have been answered during implementation; flag any that should now be resolved.
 
 ### Step 2 — Inspect the implementation
 
@@ -66,9 +66,16 @@ Order findings by severity: `missing` > `partial` > `unclear` > `complete`. For 
 
 **If anything is `partial`, `missing`, or `unclear`:** stop here. Do not proceed to Step 4. The user must fix the gaps and re-run `/evaluate`.
 
-### Step 4 — Code-quality pass (optional, only if Step 3 is fully `complete`)
+### Step 4 — Lifecycle and code-quality pass (only if Step 3 is fully `complete`)
 
-When every acceptance criterion is `complete`, optionally invoke a code-quality skill (e.g. `/simplify` if available in this environment) on the changed files to review for reuse, quality, and efficiency. If no such skill is available, skip this step and move directly to Step 5.
+When every acceptance criterion is `complete`:
+
+1. Add or update the evaluated phase frontmatter:
+   ```yaml
+   status: implemented-pending-pr
+   ```
+   Preserve `namespace`, `source_dump`, `related_pr`, and `wiki_log` fields.
+2. Optionally invoke a code-quality skill (e.g. `/simplify` if available in this environment) on the changed files to review for reuse, quality, and efficiency. If no such skill is available, skip this substep and move directly to Step 5.
 
 ### Step 5 — Output
 
@@ -84,6 +91,7 @@ Produce one of two outputs.
 **If ready for /review-pr:**
 
 - Confirmation that all acceptance criteria across `ready to ship` phases are `complete`.
+- Phase files marked `implemented-pending-pr`.
 - Skipped phases (those still at `status: wip`), if any.
 - Summary of any code-quality pass results (if Step 4 ran).
 - Any `tests.md` entries still `Status: open` (these are empirical and may need post-deploy follow-up).

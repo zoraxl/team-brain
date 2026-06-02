@@ -19,7 +19,7 @@ Validate, package, and apply a PR. Owns lint / format / typecheck / UI checks. D
 Workflow position:
 
 ```
-/brainstorm → /planning → implement → /evaluate → /review-pr → merge → /wiki-sync
+/brainstorm → /planning → /implement → /evaluate → /review-pr → merge → /wiki-sync
 ```
 
 Invokable from any repo. The skill resolves repo paths via `repos.yaml` at the wiki repo root when needed.
@@ -108,6 +108,34 @@ GitHub auto-closes the linked issue when the PR merges; do not comment on or lab
 
 ---
 
+## Step 3.5 — Detect lifecycle plan
+
+If the branch or PR is part of the brain workflow, identify the related plan file:
+
+1. Prefer a user-provided plan path.
+2. Search the PR body, branch name, commit messages, and active `plans/<namespace>/<feature-slug>/` folders for a matching phase.
+3. If multiple plan files could match, ask the user which one this PR implements, or allow `none`.
+
+When a plan file is found, read its frontmatter and source dump. Carry these values into the PR body:
+
+```markdown
+## Lifecycle
+
+- Plan: `plans/<namespace>/<feature-slug>/<phase-slug>.md`
+- Source idea: `<source_dump path, or none>`
+```
+
+After a PR exists, update the plan frontmatter to:
+
+```yaml
+status: pr-open
+related_pr: <PR URL>
+```
+
+Preserve `namespace`, `source_dump`, and `wiki_log`. Do not archive or update wiki pages from this skill; `/wiki-sync` owns that after merge.
+
+---
+
 ## Step 4 — Analyze the diff
 
 Read every file in the diff. Understand:
@@ -155,6 +183,8 @@ Produce exactly **two copy-pasteable blocks**:
 
 **Impact:** <!-- Effect on users, decisions, or cross-repo understanding -->
 {impact}
+
+{lifecycle_block_if_any}
 
 **Changes:** <!-- Bullet list of key changes -->
 {changes_as_bullet_list}

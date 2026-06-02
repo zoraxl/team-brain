@@ -7,9 +7,10 @@ Latest meaningful wiki maintenance, newest first. When this file exceeds ~20 ent
 
 Skills that append here:
 
-- `/wiki-sync` — appends after every PR sync or doc ingest
+- `/wiki-sync` — appends after every PR sync or doc ingest and records idempotency in [synced-prs.md](synced-prs.md)
 - `/wiki-adr` — appends after every ad-hoc ADR
 - `/wiki-runbook` — appends after every runbook update
+- `/lifecycle-audit` — appends when approved cleanup changes wiki meaning
 
 ## Entry template
 

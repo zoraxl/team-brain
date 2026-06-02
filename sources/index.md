@@ -3,7 +3,7 @@
 Status: template
 Last reviewed: YYYY-MM-DD
 
-> **Canonical source manifest:** [`../repos.yaml`](../repos.yaml). Skills (`/wiki-sync`, `/wiki-query`, `/planning`, `/evaluate`, `/review-pr`) read `repos.yaml` directly to resolve repo paths and source→wiki feed mappings.
+> **Canonical source manifest:** [`../repos.yaml`](../repos.yaml). Skills (`/wiki-sync`, `/wiki-query`, `/planning`, `/implement`, `/evaluate`, `/review-pr`, `/create-bug-issue`, and `/skills-sync`) read `repos.yaml` directly to resolve repo paths, source→wiki feed mappings, validation commands, and skill destinations.
 >
 > This file is a **human-readable companion** — narrative notes about the team's source material that don't fit cleanly into YAML. Keep it in sync with `repos.yaml` or delete it if `repos.yaml` is enough.
 

@@ -84,6 +84,17 @@ After producing the brainstorm document, ask the user:
 
 If the user picks (1):
 - Write the full brainstorm document to `inbox/dump/YYYY-MM-DD-brainstorm-<slug>.md` using today's date and a short kebab-case slug derived from the topic.
+- Add frontmatter before the brainstorm title:
+  ```yaml
+  ---
+  namespace: general
+  status: brainstorm
+  related_plan:
+  related_pr:
+  wiki_log:
+  ---
+  ```
+  If the user names a more specific namespace, use that value instead of `general`.
 - Do not promote the idea into stable wiki pages unless a human explicitly asks for that curation step.
 
 Then end with:

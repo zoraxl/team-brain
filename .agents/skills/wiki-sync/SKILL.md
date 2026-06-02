@@ -1,6 +1,6 @@
 ---
 name: wiki-sync
-description: Use to sync the wiki from a merged PR or from a source doc/file path. Two modes — PR mode (post-merge: creates ADR if needed, flips ADR to accepted, updates wiki pages, appends log, cleans up related plan files) and doc mode (ingests existing implemented knowledge from a file or doc path directly). Use when the user says "wiki-sync", "/wiki-sync", "sync the wiki", "update the wiki from this PR", "ingest this PR", "ingest this doc", or "add this to the wiki".
+description: Use to sync the wiki from a merged PR or from a source doc/file path. Two modes — PR mode (post-merge: creates ADR if needed, flips ADR to accepted, updates wiki pages, appends log, records idempotency, archives related plan/source files) and doc mode (ingests existing implemented knowledge from a file or doc path directly). Use when the user says "wiki-sync", "/wiki-sync", "sync the wiki", "update the wiki from this PR", "ingest this PR", "ingest this doc", or "add this to the wiki".
 ---
 
 # Wiki Sync
@@ -41,17 +41,42 @@ Read `repos.yaml`, `CONCEPT.md`, `wiki/index.md`, and `wiki/decisions/index.md`.
 gh pr view <pr> --repo <owner/repo> --json title,body,files,mergedAt,labels,state,headRefName,closingIssuesReferences
 ```
 
-Require `state=MERGED`. If the PR is not yet merged, stop and tell the user. Check `wiki/logs/synced-prs.md` — if the PR URL already appears, report "already synced" and stop (idempotent).
+Require `state=MERGED`. If the PR is not yet merged, stop and tell the user.
 
-### Step 3 — Identify the bound plan file
+Canonicalize the PR identity before idempotency checks:
+
+- Prefer the GitHub API owner/repo and PR number.
+- Treat PR URLs and `owner/repo#N` references as the same PR when the repo name and PR number match.
+- Check `wiki/logs/synced-prs.md` by canonical identity, not exact URL text only.
+
+If the canonical PR identity already appears in `wiki/logs/synced-prs.md`, report "already synced", note any known archive state if relevant, and stop without moving files again.
+
+### Step 3 — Identify and verify the bound plan file and source idea
 
 Look for a reference to a plan file in this order:
 
-1. A line matching `plans/<feature-slug>/<phase-slug>.md` in the PR body
-2. Scan `plans/` for a phase slug that matches the PR title or branch name
-3. Ask the user: "Which plan file does this PR correspond to? (e.g. `plans/<feature-slug>/<phase-slug>.md`, or 'none')"
+1. The PR body `## Lifecycle` section, accepting `Plan: plans/<namespace>/<feature-slug>/<phase-slug>.md` or `Plan: plans/<namespace>/<feature-slug>/`.
+2. A line matching `plans/<namespace>/<feature-slug>/<phase-slug>.md` elsewhere in the PR body.
+3. Scan `plans/` for a phase slug that matches the PR title or branch name.
+4. Ask the user: "Which plan file or folder does this PR correspond to? (e.g. `plans/general/auth-rewrite/phase-1-token-storage.md`, `plans/general/workflow-fix/`, or 'none')"
 
-If the user says "none" or no plan file is found, skip plan cleanup at the end.
+If the user says "none" or no plan file is found, skip plan/source archive cleanup at the end.
+
+When a plan file is found, resolve the source idea from:
+
+1. The PR body `## Lifecycle` section line `Source idea: ...`.
+2. The plan frontmatter field `source_dump`.
+3. A source idea file whose `related_plan` points at the plan path or folder.
+
+Do not invent a source idea if none is found.
+
+Before proceeding with archive cleanup, verify the lifecycle chain:
+
+- The PR body `Plan:` value must match the resolved plan path or folder.
+- The PR body `Source idea:` value, when present, must match the plan `source_dump`.
+- The source idea `related_plan`, when present, must match the resolved plan path or folder.
+- The plan/source `related_pr`, when present, must match the canonical PR identity.
+- If any values conflict, stop archive cleanup and ask the user to confirm the correct chain. Continue wiki/ADR sync if possible, but do not archive conflicting lifecycle files.
 
 ### Step 4 — Resolve or create the ADR
 
@@ -147,7 +172,7 @@ If the plan file has a "Tunable Knobs and Notes" section with any content, appen
 <Paste the Tunable Knobs section verbatim from the plan file>
 ```
 
-This preserves operational knowledge (thresholds, caps, timeouts, signals to watch) that would otherwise be lost when the plan file is deleted. If there are no tunable knobs, skip this step.
+This preserves operational knowledge (thresholds, caps, timeouts, signals to watch) that would otherwise become harder to find after the plan file is archived. If there are no tunable knobs, skip this step.
 
 ### Step 8 — Append to wiki log
 
@@ -172,34 +197,48 @@ Append to `wiki/logs/synced-prs.md` (create if missing):
 <PR URL> synced <YYYY-MM-DD>
 ```
 
-### Step 10 — Clean up plan files
+### Step 10 — Archive plan and source idea files
+
+Archive cleanup is allowed only when the whole linked idea/plan chain is complete. A source idea linked to a plan folder remains active until every linked phase file is synced, archived, or explicitly included in the completed scope. Do not archive a source idea merely because one phase in its plan folder merged.
+
+Treat these statuses as complete for archive-scope checks: `implemented-and-synced` and `archived`. Treat `pr-open` as complete only when `related_pr` matches the merged PR being synced and the phase is explicitly included in the PR lifecycle scope. Treat `wip`, `ready to ship`, `implemented-pending-pr`, missing status, and unknown statuses as incomplete.
 
 If a plan file was identified in Step 3:
 
-1. **Soft warning — sibling phases still wip.** Before deleting, scan all sibling phase files in `plans/<feature-slug>/` for `status: wip` in the frontmatter. If any are found, print a warning (do **not** block):
+1. **Resolve namespace.** Prefer the plan frontmatter field `namespace`. If missing, fall back to the path prefix in `plans/<namespace>/`. If the namespace cannot be resolved, stop before archive cleanup and ask the user.
 
-   > **Heads-up:** the following phases under `plans/<feature-slug>/` are still `status: wip` and were never reviewed: `<list of files>`. They will remain in `plans/` after cleanup. If they were intentionally abandoned (scope changed, superseded), consider removing them or moving outstanding ideas to `inbox/backlog.md`. Proceeding with cleanup of the implemented phase.
+2. **Hard gate — linked phases incomplete.** Before archiving, scan all sibling phase files in `plans/<namespace>/<feature-slug>/` and classify each phase as complete or incomplete using the archive-scope rules above. If any are incomplete, do not archive the source idea, `tests.md`, or full plan folder. Archive only phase files explicitly matched to the merged PR and leave the chain active:
 
-2. **Soft warning — unresolved tests.md entries.** If `plans/<feature-slug>/tests.md` exists, scan it for entries with `Status: open`. If any are found, print a warning:
+   > **Not archiving full chain:** the following phases under `plans/<namespace>/<feature-slug>/` are not complete: `<list of files>`. The source idea and plan folder stay active until the whole linked chain is done. If unfinished phases were intentionally abandoned, route that context to `inbox/backlog.md` or confirm a legacy cleanup/backfill path.
 
-   > **Heads-up:** `plans/<feature-slug>/tests.md` has open entries that were not resolved during implementation: `<list of question titles>`. If the feature folder is about to be deleted (last phase shipped), consider migrating them to `inbox/backlog.md` or to a relevant wiki engineering note before they disappear. Proceeding.
+3. **Gate — unresolved tests.md entries.** If `plans/<namespace>/<feature-slug>/tests.md` exists, scan it for entries with `Status: open`. If any are found and the feature folder is otherwise complete, ask before archiving `tests.md` or the source idea.
 
-3. Delete the phase file:
-   ```bash
-   rm plans/<feature-slug>/<phase-slug>.md
+4. **Mark the implemented phase before archive.** A merged PR is implementation evidence for the identified phase when the phase is named by the PR lifecycle section or confirmed by the user. Before moving, add or update frontmatter:
+   ```yaml
+   status: implemented-and-synced
+   implemented_at: YYYY-MM-DD
+   wiki_log: <log path>
+   related_pr: <PR URL>
    ```
 
-4. Check if the feature folder is now empty (ignoring `tests.md` for the empty check — if only `tests.md` remains, treat as empty and delete the folder along with it; the prior warning gave the user a chance to migrate any open entries):
-   ```bash
-   ls plans/<feature-slug>/
+5. **Archive the phase file.** Use the sync date for the archive month (`YYYY-MM`). Before moving, add or update frontmatter:
+   ```yaml
+   status: archived
+   archived_from: <original plan path>
+   archived_at: YYYY-MM-DD
+   wiki_log: <log path>
+   related_pr: <PR URL>
    ```
 
-5. If only `tests.md` remains (or the folder is empty of `.md` files), delete the folder:
-   ```bash
-   rm -r plans/<feature-slug>/
-   ```
+   Move the file to `archive/<namespace>/plans/YYYY-MM/<feature-slug>-<phase-slug>.md` or another collision-safe equivalent. Never overwrite an existing archive file; append a short suffix if needed.
 
-Print what was deleted, including any `tests.md` removed alongside the folder.
+6. **Archive `tests.md` only when the feature folder is complete.** If only `tests.md` remains and all entries are resolved, or the user confirms archival despite open entries, archive `tests.md` under `archive/<namespace>/plans/YYYY-MM/`. Do not permanently delete it.
+
+7. **Remove empty original plan folders after archive.** After archiving all in-scope phase files and any archived `tests.md`, check the original `plans/<namespace>/<feature-slug>/` folder. If no files remain, remove the empty folder. If any file remains, leave the folder in place and print the remaining files.
+
+8. **Mark and archive the source idea only when safe.** If a source idea was resolved, the lifecycle chain verifies, and every linked phase is complete, update its frontmatter with `status: implemented-and-synced`, `related_plan`, `related_pr`, and `wiki_log`, then archive it to `archive/<namespace>/ideas/YYYY-MM/` with `status: archived`, `archived_from`, and `archived_at`. Do not archive a source idea that may feed other active plans or has incomplete linked phases.
+
+9. Print what was archived, which lifecycle statuses were updated, and which empty active folders were removed. `/wiki-sync` must not permanently delete plan, idea, or test files.
 
 ### Step 11 — Output
 
@@ -207,7 +246,8 @@ List:
 - ADR path and status (created or flipped to accepted)
 - Wiki files updated
 - Log entry path
-- Plan files deleted (if any)
+- Plan/source files archived (if any)
+- Empty active folders removed (if any)
 
 ---
 
