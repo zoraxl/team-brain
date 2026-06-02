@@ -76,10 +76,10 @@ Each skill owns one verb. See [.agents/README.md](.agents/README.md) for the ful
 | Skill | Invoke | What it does |
 |---|---|---|
 | `brainstorm` | `/brainstorm <topic>` | Explore a problem before building. Saves to `inbox/dump/` on request. |
-| `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<namespace>/<feature-slug>/` at `status: wip`. Phase 3: flip a phase to `status: ready to ship` once every open question is resolved or routed. |
-| `implement` | `/implement <phase-file-or-feature>` | Implements a locked phase in the target repo resolved from `repos.yaml`, runs a scoped `/simplify`, and hands off to `/evaluate`. |
+| `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<namespace>/<feature-slug>/` at `status: wip`. Phase 3: optionally flip a phase to `status: ready to ship` when a user wants to implement manually. |
+| `implement` | `/implement <phase-file-or-feature>` | Implements a phase in the target repo resolved from `repos.yaml`. If the plan is still `wip`, it resolves open questions with the user one by one before coding. Runs `/simplify` and marks the phase `implemented-pending-pr`. |
 | `simplify` | `/simplify <paths-or-diff>` | Scoped code-quality pass for recently changed implementation code. Preserves behavior while improving clarity, reuse, and maintainability. |
-| `evaluate` | `/evaluate <feature-slug>` | Pre-PR gate. Maps each acceptance criterion to code; reports `complete` / `partial` / `missing` / `unclear`. Skips phases still at `status: wip`. |
+| `evaluate` | `/evaluate <feature-slug>` | Optional pre-PR gate, especially for manually implemented phases. Maps each acceptance criterion to code; reports `complete` / `partial` / `missing` / `unclear`. Skips phases still at `status: wip`. |
 | `review-pr` | `/review-pr [<pr-number>]` | Pre-merge. Runs validation (lint/format/typecheck/UI), auto-detects linked issue, writes title + body + change-breakdown score, applies via `gh`. |
 | `wiki-sync` | `/wiki-sync <pr-or-doc>` | Post-merge. **PR mode**: creates/flips ADR, updates wiki pages, appends log, archives the matching lifecycle files. **Doc mode**: ingests existing implemented knowledge directly. |
 | `wiki-query` | `/wiki-query <question>` | Read-only. Searches wiki + ADRs + `repos.yaml`. Cites sources, distinguishes stable knowledge from uncertainty. |
@@ -128,7 +128,7 @@ Then register or follow the reusable skills in .agents/skills:
 
 When I want to explore an idea, use brainstorm.
 When I want to turn a brainstorm or intent into phase specs, use planning.
-When a phase is reviewed and ready, use implement.
+When I want to turn a phase into code, use implement.
 When I have implemented a phase and want to verify it, use evaluate.
 When I'm ready to open or update a PR, use review-pr.
 When a PR has merged and the wiki needs syncing, use wiki-sync.
@@ -185,21 +185,23 @@ When a brainstorm solidifies into something worth building, use `/planning`:
 Use planning: <paste your brainstorm doc or describe the feature>
 ```
 
-`/planning` writes one detailed technical spec per phase, grouped under a namespace and feature folder: `plans/<namespace>/<feature-slug>/<phase-slug>.md`. Use `general` when the work is not tied to a specific product, customer, domain, or workstream. Each new spec is `status: wip` — not safe to implement. When you've reviewed a phase and resolved its open questions (in-place, into `tests.md`, or into `inbox/backlog.md`), tell `/planning` to flip the phase to `ready to ship`.
+`/planning` writes one detailed technical spec per phase, grouped under a namespace and feature folder: `plans/<namespace>/<feature-slug>/<phase-slug>.md`. Use `general` when the work is not tied to a specific product, customer, domain, or workstream. Each new spec is `status: wip`.
+
+If you plan to implement the phase yourself, review the plan and resolve its open questions, then tell `/planning` to flip the phase to `ready to ship`. That status means a human has reviewed the phase and it is safe to build outside the `/implement` skill.
 
 ### 4. Implementation
 
-When a phase is reviewed and ready, run `/implement`:
+You can also run `/implement` directly on a `wip` or `ready to ship` phase:
 
 ```txt
 Use implement: plans/<namespace>/<feature-slug>/<phase-slug>.md
 ```
 
-`/implement` treats the locked phase as the implementation scope, resolves the target repo through `repos.yaml`, writes the code, runs `/simplify` on the changed files when available, and then hands off to `/evaluate`.
+If the phase is still `wip`, `/implement` reads the open questions and asks you to resolve or route them one by one before coding. It then treats the resolved phase as implementation scope, resolves the target repo through `repos.yaml`, writes the code, runs `/simplify` on the changed files when available, and marks the phase `implemented-pending-pr`.
 
 ### 5. After implementation, before a PR
 
-Run `/evaluate` first to verify the code matches the plan. It maps each acceptance criterion to code and reports gaps. It does **not** run lint/typecheck/UI (that's `/review-pr`) and does **not** touch the wiki.
+Run `/evaluate` when you implemented the phase yourself, or when you want a separate acceptance-criteria audit before opening a PR. It maps each acceptance criterion to code and reports gaps. It does **not** run lint/typecheck/UI (that's `/review-pr`) and does **not** touch the wiki.
 
 ### 6. Before opening a PR
 

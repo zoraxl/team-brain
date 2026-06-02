@@ -1,11 +1,11 @@
 ---
 name: evaluate
-description: Pre-PR gate. Verifies the implementation matches the plan by mapping each acceptance criterion to code, reports gaps, and (when complete) optionally runs a code-quality pass. Does not write docs, clean plans, or run wiki tools — those are handled post-merge by /wiki-sync. Does not run lint/typecheck/UI checks — that is /review-pr's job. Use when the user says "/evaluate", "evaluate the implementation", "check my work against the plan", "is this implementation done", "audit my code against the plan".
+description: Optional pre-PR gate, especially when the user implemented a ready-to-ship phase manually. Verifies the implementation matches the plan by mapping each acceptance criterion to code, reports gaps, and marks complete phases implemented-pending-pr. Does not write docs, clean plans, or run wiki tools — those are handled post-merge by /wiki-sync. Does not run lint/typecheck/UI checks — that is /review-pr's job. Use when the user says "/evaluate", "evaluate the implementation", "check my work against the plan", "is this implementation done", "audit my code against the plan".
 ---
 
 # Evaluate
 
-Pre-PR gate. Verifies the code matches the plan. Does **not** write docs, clean plans, or run wiki tools — those are post-merge concerns owned by `/wiki-sync`. Does **not** run lint / typecheck / UI validation — that is `/review-pr`'s responsibility.
+Optional pre-PR gate. Use this especially when the user implemented a `ready to ship` phase manually and wants an acceptance-criteria audit before `/review-pr`. `/implement` can already mark its own completed phases `implemented-pending-pr` after it resolves questions, writes code, and runs `/simplify`.
 
 ## When to use
 
@@ -21,7 +21,7 @@ Trigger phrases: "/evaluate", "evaluate the implementation", "check my work agai
 
 - Treat plans as evaluation criteria, not as instructions to rewrite code.
 - Findings come first. If gaps exist, stop after reporting them unless the user explicitly asks for fixes.
-- Skip phase files with `status: wip` — those are not yet ready to implement and should not be evaluated. Note them in output.
+- Skip phase files with `status: wip` — those should either go through `/implement` directly or be reviewed/flipped to `ready to ship` first. Note them in output.
 - Do not write docs, archive plans, or invoke wiki-side tools (`/wiki-sync`, `/wiki-lint`).
 - Do not run lint / typecheck / UI validation — `/review-pr` owns that.
 
@@ -75,7 +75,7 @@ When every acceptance criterion is `complete`:
    status: implemented-pending-pr
    ```
    Preserve `namespace`, `source_dump`, `related_pr`, and `wiki_log` fields.
-2. Optionally invoke a code-quality skill (e.g. `/simplify` if available in this environment) on the changed files to review for reuse, quality, and efficiency. If no such skill is available, skip this substep and move directly to Step 5.
+2. Optionally invoke a code-quality skill (e.g. `/simplify` if available in this environment) on the changed files to review for reuse, quality, and efficiency. Skip this if `/implement` already ran `/simplify` for the same diff.
 
 ### Step 5 — Output
 

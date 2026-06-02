@@ -11,15 +11,15 @@ Agents should use these skills when the user's request matches the skill descrip
 | Skill | Use When |
 |---|---|
 | `brainstorm` | Exploring a problem or idea before committing to a plan. Surfaces goals, constraints, options, and open questions. Saves to `inbox/dump/` on request. |
-| `planning` | Turning an implementation intent (or a `brainstorm` output) into one or more detailed phase specs in `plans/<namespace>/<feature-slug>/`. Three-phase gate: (1) propose breakdown and pause, (2) write specs at `status: wip`, (3) flip a phase to `status: ready to ship` after every open question is resolved or routed. |
+| `planning` | Turning an implementation intent (or a `brainstorm` output) into one or more detailed phase specs in `plans/<namespace>/<feature-slug>/`. Three-phase gate: (1) propose breakdown and pause, (2) write specs at `status: wip`, (3) optionally flip a phase to `status: ready to ship` after review when the user wants to implement manually. |
 
 ### PR Workflow
 
 | Skill | Use When |
 |---|---|
-| `implement` | Implements reviewed phase plans in the target repo resolved through `repos.yaml`, then runs `/simplify` when available and hands off to `/evaluate`. |
+| `implement` | Implements phase plans in the target repo resolved through `repos.yaml`. Can run directly on `wip` plans by resolving open questions with the user one by one before coding, then runs `/simplify` and marks the phase `implemented-pending-pr`. |
 | `simplify` | Scoped post-implementation code-quality pass that preserves behavior while improving clarity, reuse, performance, and maintainability. |
-| `evaluate` | Pre-PR gate. Reads `plans/<namespace>/<feature-slug>/`, maps each acceptance criterion to code, reports `complete` / `partial` / `missing` / `unclear`, and marks complete phases `implemented-pending-pr`. Skips phases still at `status: wip`. Does **not** run lint/typecheck/UI; does **not** touch the wiki. |
+| `evaluate` | Pre-PR gate, especially for phases the user implemented manually. Reads `plans/<namespace>/<feature-slug>/`, maps each acceptance criterion to code, reports `complete` / `partial` / `missing` / `unclear`, and marks complete phases `implemented-pending-pr`. Skips phases still at `status: wip`. Does **not** run lint/typecheck/UI; does **not** touch the wiki. |
 | `review-pr` | Pre-merge. Runs the repo's validation commands (lint, format, typecheck, UI as applicable). Auto-detects a linked GitHub issue. Writes the PR title, body, change breakdown, and total score, then applies via `gh`. No ADR drift detection — that work moved to `/wiki-sync`. Invokable from any repo. |
 | `wiki-sync` | Post-merge sync. **PR mode**: creates the ADR (or flips an existing one to `accepted`), updates affected wiki pages, appends a log entry, records in `synced-prs.md` (idempotent), and archives matching lifecycle files. **Doc mode**: ingests existing implemented knowledge from a file path. |
 | `create-bug-issue` | Captures a bug in the appropriate GitHub repo with the `bug` label. |
@@ -49,7 +49,7 @@ Agents should use these skills when the user's request matches the skill descrip
 /brainstorm → /planning → /implement → /evaluate → /review-pr → merge → /wiki-sync
 ```
 
-Each skill owns one verb: **/implement** writes code from a locked plan, **/evaluate** verifies (code ↔ plan), **/review-pr** validates and packages (lint/typecheck/UI + PR title/body/score), **/wiki-sync** ingests (ADR + wiki pages + lifecycle archive).
+Each skill owns one verb: **/implement** resolves questions and writes code from a plan, **/evaluate** verifies manually implemented work (code ↔ plan), **/review-pr** validates and packages (lint/typecheck/UI + PR title/body/score), **/wiki-sync** ingests (ADR + wiki pages + lifecycle archive).
 
 For ongoing inbox hygiene, skim `inbox/fragments.md` periodically and `/brainstorm` promising ideas (or delete dead ones). Use `/workflow-from-chats` when repeated chat feedback should become durable workflow guidance. For periodic health, run `/wiki-lint`.
 

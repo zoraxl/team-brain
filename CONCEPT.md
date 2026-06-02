@@ -68,9 +68,9 @@ Capture rough thoughts in [`inbox/fragments.md`](inbox/fragments.md). Also use:
 Inbox material is human-curated. Skim it periodically and promote ideas through the workflow:
 
 - The idea is worth thinking through → `/brainstorm` produces a structured exploration doc into `inbox/dump/`.
-- The brainstorm solidifies into something to build → `/planning` writes phase specs into `plans/<namespace>/<feature-slug>/` (status `wip` until reviewed and flipped to `ready to ship`).
-- Implementation starts → `/implement` treats a locked phase as scope, writes code in the target repo, and runs `/simplify` when available.
-- Implementation is verified → `/evaluate` maps acceptance criteria to code and reports gaps before `/review-pr`.
+- The brainstorm solidifies into something to build → `/planning` writes phase specs into `plans/<namespace>/<feature-slug>/` (status `wip`). If the user plans to implement manually, `/planning` can resolve open questions and flip the phase to `ready to ship`.
+- Implementation starts → `/implement` can run directly on a `wip` phase, asks the user to resolve or route open questions one by one, writes code in the target repo, runs `/simplify` when available, and marks the phase `implemented-pending-pr`.
+- Implementation is verified → `/evaluate` maps acceptance criteria to code and reports gaps before `/review-pr`, especially when the user implemented the phase manually.
 - Implementation ships → `/wiki-sync <pr>` syncs the merged PR into the wiki, creates or flips the ADR, and archives completed plan/source files under `archive/<namespace>/`.
 - Repeated chat feedback reveals a durable agent/team preference → `/workflow-from-chats` routes it to a skill update, wiki/runbook note, planning guidance, inbox follow-up, or no change.
 
@@ -135,8 +135,8 @@ Poor fits (leave in the owning repo):
 The package includes agent-readable skills in [.agents/skills](.agents/skills):
 
 - `brainstorm` — explore ideas before planning
-- `planning` — convert designs into per-phase technical specs (status `wip` → `ready to ship` after review)
-- `implement` — implement locked phase plans in target repos and hand off to evaluation
+- `planning` — convert designs into per-phase technical specs; optionally flip `wip` → `ready to ship` after review for manual implementation
+- `implement` — resolve open questions, implement phase plans in target repos, run `/simplify`, and mark `implemented-pending-pr`
 - `simplify` — scoped post-implementation code-quality pass
 - `evaluate` — pre-PR gate: maps acceptance criteria to code, reports gaps
 - `review-pr` — pre-merge validation (lint/format/typecheck/UI), PR title/body/score, linked-issue handling

@@ -143,9 +143,9 @@ Concrete questions that remain unresolved for this phase. Each item should be a 
 Omit any section that genuinely does not apply (e.g. "Tunable Knobs" for a pure schema migration). Do not add placeholder text.
 
 **Status values:**
-- `wip` — default for all newly written phases; not safe to implement.
-- `ready to ship` — set only by Phase 3 after the user has reviewed and every open question has been resolved or routed.
-- `implemented-pending-pr` — set by `/evaluate` when acceptance criteria are complete but no PR has been stamped yet.
+- `wip` — default for all newly written phases; `/implement` may consume it directly after resolving or routing open questions with the user.
+- `ready to ship` — set by Phase 3 after the user has reviewed and every open question has been resolved or routed; most useful when the user plans to implement manually.
+- `implemented-pending-pr` — set by `/implement` after it implements and simplifies a phase, or by `/evaluate` when acceptance criteria are complete for work the user implemented manually.
 - `pr-open` — set by `/review-pr` after a PR exists and `related_pr` can be written.
 - `implemented-and-synced` — set by `/wiki-sync` after the merged PR has been ingested.
 - `archived` — set by `/wiki-sync` immediately before moving completed idea/plan/test files into `archive/<namespace>/`.
@@ -270,6 +270,7 @@ If the feature folder has other phase files still at `status: wip`, list them in
 - **Do not skip the approval gate.** The pause between Phase 1 and Phase 2 is the entire point of this skill.
 - **Do not write any files in Phase 1.** Planning is a dry run.
 - **Do not write `status: ready to ship` in Phase 2.** New specs are always `status: wip`. Only Phase 3 may flip them.
+- **Do not require Phase 3 before `/implement`.** `/implement` can run directly on `wip` plans; it will resolve or route open questions with the user before coding.
 - **Do not flip status without bucketing every open question.** If the user pushes to skip, push back — the gate is the whole point.
 
 ## Repository Map
