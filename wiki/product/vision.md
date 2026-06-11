@@ -17,5 +17,5 @@ Replace this section with a concise explanation of what the team is building, wh
 ## Related
 
 - [Glossary](glossary.md)
-- [Architecture](../system/architecture.md)
+- [Architecture](../platform/architecture.md)
 - [Open questions](../open-questions.md)

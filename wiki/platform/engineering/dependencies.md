@@ -18,4 +18,4 @@ Track major dependencies and why they matter. Routine patch bumps usually do not
 ## Related
 
 - [Decision index](../decisions/index.md)
-- [Architecture](../system/architecture.md)
+- [Architecture](../architecture.md)

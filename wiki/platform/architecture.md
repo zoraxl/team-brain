@@ -25,5 +25,5 @@ Summarize the cross-repo or cross-service architecture. Keep implementation deta
 
 - [Repo map](repo-map.md)
 - [Data flow](data-flow.md)
-- [Infrastructure](../engineering/infrastructure.md)
+- [Infrastructure](engineering/infrastructure.md)
 - [Decision index](../decisions/index.md)
