@@ -40,17 +40,22 @@ team-brain/
 │       └── plans/YYYY-MM/
 ├── .agents/
 │   ├── README.md
-│   └── skills/
+│   └── skills/                     # canonical skill source
+├── .claude/skills/                 # mirror for Claude Code (managed by /skills-sync)
+├── .cursor/skills/                 # mirror for Cursor
+├── .codex/skills/                  # mirror for Codex
 └── wiki/
     ├── index.md
     ├── logs/
     │   ├── index.md
     │   └── synced-prs.md
-    ├── product/
-    ├── system/
-    ├── engineering/
-    └── decisions/
+    ├── decisions/                  # ADRs under decisions/<zone>/, global numbering
+    ├── product/                    # example product zone — rename to your first namespace
+    ├── platform/                   # shared implementation substrate (incl. engineering/)
+    └── general/                    # team workflow knowledge (created lazily)
 ```
+
+Wiki pages are routed into **zones**: one `wiki/<namespace>/` zone per product/domain, `wiki/platform/` for implementation substrate shared across namespaces, and `wiki/general/` for workflow knowledge. The boundary rule: route by implementation sharing, not by topic — see [CONCEPT.md](CONCEPT.md).
 
 ## Recommended local setup
 
@@ -75,6 +80,7 @@ Each skill owns one verb. See [.agents/README.md](.agents/README.md) for the ful
 
 | Skill | Invoke | What it does |
 |---|---|---|
+| `setup-brain` | `/setup-brain` | One-time (re-runnable) onboarding. **New brain**: guided fill-in of `repos.yaml`, namespaces, zones, and template placeholders. **Existing brain**: report-first migration of an existing wiki into this structure. Installs skill copies for the agent tools the team uses (Claude Code, Cursor, Codex, …). |
 | `brainstorm` | `/brainstorm <topic>` | Explore a problem before building. Saves to `inbox/dump/` on request. |
 | `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<namespace>/<feature-slug>/` at `status: wip`. Phase 3: optionally flip a phase to `status: ready to ship` when a user wants to implement manually. |
 | `implement` | `/implement <phase-file-or-feature>` | Implements a phase in the target repo resolved from `repos.yaml`. If the plan is still `wip`, it resolves open questions with the user one by one before coding. Runs `/simplify` and marks the phase `implemented-pending-pr`. |
@@ -93,6 +99,10 @@ Each skill owns one verb. See [.agents/README.md](.agents/README.md) for the ful
 | `lifecycle-audit` | `/lifecycle-audit` | Report-first cleanup audit for historical ideas, plans, PRs, archives, and wiki-sync state. |
 | `skills-sync` | `/skills-sync` | Admin workflow for syncing registered skills from this repo to configured agent surfaces. |
 
+## Getting Started
+
+The skills ship pre-installed for Claude Code (`.claude/skills/`), Cursor (`.cursor/skills/`), and Codex (`.codex/skills/`) as mirrors of the canonical `.agents/skills/`, so they're discoverable the moment you open the repo in any of those tools. After cloning, run `/setup-brain`: it detects whether you're configuring a fresh template or migrating an existing wiki, walks the customization checklist, prunes the surface mirrors for tools your team doesn't use (or adds a custom surface), and records the choices in `repos.yaml` under `skill_surfaces`. Re-running it later acts as a setup health check.
+
 ## Copy-Paste Setup Prompt
 
 Paste this into Claude Code, Cursor, Codex, or another agent after opening this repo:
@@ -108,6 +118,7 @@ Please read:
 - .agents/README.md
 
 Then register or follow the reusable skills in .agents/skills:
+- setup-brain
 - brainstorm
 - planning
 - implement
@@ -126,6 +137,7 @@ Then register or follow the reusable skills in .agents/skills:
 - lifecycle-audit
 - skills-sync
 
+When I want to configure this template or migrate an existing wiki into it, use setup-brain.
 When I want to explore an idea, use brainstorm.
 When I want to turn a brainstorm or intent into phase specs, use planning.
 When I want to turn a phase into code, use implement.
@@ -150,10 +162,10 @@ Update repos.yaml when introducing a new authoritative source.
 Update wiki/index.md when adding a new page.
 Append meaningful maintenance entries to wiki/logs/index.md.
 
-First, inspect the current repo and tell me what setup or customization is still needed for this team.
+First, run setup-brain: inspect the current repo, report what is already configured versus still needed, and walk me through the remaining setup for this team.
 ```
 
-For tools that require skills to live in a specific directory, copy each folder from `.agents/skills/` into that tool's skills directory while preserving the `SKILL.md` file inside each folder.
+Claude Code, Cursor, and Codex discover the skills automatically from the pre-installed surface mirrors. For another tool that requires skills to live in a specific directory, `/setup-brain` installs the copies for you (it copies each folder from `.agents/skills/` into the tool's skills directory while preserving the `SKILL.md` file inside each folder, and records the chosen surfaces in `repos.yaml` under `skill_surfaces`). Ongoing drift between copies is managed by `/skills-sync`.
 
 ## How To Use This Wiki
 
@@ -205,7 +217,7 @@ Run `/evaluate` when you implemented the phase yourself, or when you want a sepa
 
 ### 6. Before opening a PR
 
-Run `/review-pr` from whichever repo you're in. It runs validation, auto-detects a linked GitHub issue, and writes the PR title + body + score to GitHub. ADR work happens later in `/wiki-sync`.
+Run `/review-pr` from whichever repo you're in. It runs validation, auto-detects a linked GitHub issue, and writes the PR title + body + score to GitHub. It also classifies the PR as `implementation`, `artifact` (only lands brainstorms/plans/strategy docs), or `mixed`, and stamps `related_pr` or `artifact_pr` on the lifecycle files accordingly — only implementation PRs advance a phase to `pr-open`. ADR work happens later in `/wiki-sync`.
 
 ### 7. After merge
 

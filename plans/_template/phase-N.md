@@ -3,6 +3,7 @@ status: wip
 namespace: general
 source_dump:
 related_pr:
+artifact_pr:
 wiki_log:
 ---
 
@@ -41,7 +42,7 @@ Any constants, thresholds, timeouts, or caps that were chosen for cost/performan
 
 ## Lifecycle Notes
 
-How implementers should update lifecycle status after this phase is built. State which phase files should move to `implemented-pending-pr` after implementation/evaluation, which linked source idea should remain active until the full linked chain is done, and what `/review-pr` must stamp once a PR exists. Omit this section if it does not apply.
+How implementers should update lifecycle status after this phase is built. State which phase files should move to `implemented-pending-pr` after implementation/evaluation, which linked source idea should remain active until the full linked chain is done, and what `/review-pr` must stamp once an implementation or workflow-deliverable PR exists. Omit this section if it does not apply.
 
 ## Open Questions
 

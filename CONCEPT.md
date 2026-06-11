@@ -30,8 +30,9 @@ The wiki is not the source of truth for every implementation detail. It is the s
 - Wiki page — synthesized knowledge organized for retrieval. Lives in [`wiki/`](wiki/).
 - Namespace — a product, domain, customer, repo group, or workstream used to group lifecycle files. Use `general` when work is unbound.
 - Plan phase — a pre-implementation technical spec produced by `/planning`. Lives in [`plans/<namespace>/<feature-slug>/`](plans/) until the corresponding PR merges.
-- ADR — an architecture decision record for durable choices. Lives in [`wiki/decisions/`](wiki/decisions/).
-- Runbook — operational steps for recurring procedures or incidents. Lives in [`wiki/engineering/runbooks.md`](wiki/engineering/runbooks.md).
+- ADR — an architecture decision record for durable choices. Lives in [`wiki/decisions/<zone>/`](wiki/decisions/) with global numbering and a `Namespace:` field.
+- Runbook — operational steps for recurring procedures or incidents. Lives in [`wiki/platform/engineering/runbooks.md`](wiki/platform/engineering/runbooks.md) for shared substrate, or in the owning namespace zone.
+- Wiki zone — the folder a wiki page belongs to: `wiki/<namespace>/`, `wiki/platform/`, or `wiki/general/`. See **Wiki Zones** below.
 
 ## Knowledge Layers
 
@@ -42,6 +43,20 @@ The wiki is not the source of truth for every implementation detail. It is the s
 5. **Decisions** — ADRs in [`wiki/decisions/`](wiki/decisions/), paired with their originating plan and PR.
 
 **Rule: the wiki contains only decided and implemented knowledge.** Pre-implementation material stays in `inbox/` until promoted via `/planning` (which produces phase specs in `plans/<namespace>/<feature-slug>/`) and then `/wiki-sync` (which, after merge, creates the ADR, updates wiki pages, records the sync, and archives completed lifecycle files).
+
+## Wiki Zones
+
+Wiki knowledge is routed through namespace zones so distinct product domains never mix on the same page:
+
+- `wiki/<namespace>/` — product/domain knowledge for one namespace: its concept, vocabulary, architecture, and app/API behavior. One zone per product, customer, domain, or workstream namespace the team defines.
+- `wiki/platform/` — shared implementation substrate: infrastructure, deploys, dependencies, environments, and cross-namespace implementation details.
+- `wiki/general/` — team/brain workflow operating knowledge: lifecycle semantics, conventions, and process principles.
+
+**Boundary rule: route by implementation sharing, not by topic.** If changing the knowledge would force edits in more than one namespace's code, the page belongs in `platform`; if it only touches one namespace's code, it belongs in that namespace's zone even when the concept sounds shared. Topic overlap alone never justifies a shared page — do not create mixed-namespace sections to avoid a split.
+
+**Fixed-path exceptions:** `wiki/index.md`, `wiki/logs/`, and `wiki/decisions/index.md` stay at the wiki root. ADR files live under `wiki/decisions/<zone>/` while retaining global ADR numbers and `Namespace:` fields (a product namespace, `platform`, or `general`).
+
+A single-product team can start with one product zone plus `platform` and `general`, and add zones as namespaces appear. Zones are created lazily; a half-migrated wiki is tolerated as long as `repos.yaml` feeds stay accurate and skills classify the intended zone when touching legacy pages.
 
 ## Maintenance Principles
 
@@ -71,7 +86,7 @@ Inbox material is human-curated. Skim it periodically and promote ideas through 
 - The brainstorm solidifies into something to build → `/planning` writes phase specs into `plans/<namespace>/<feature-slug>/` (status `wip`). If the user plans to implement manually, `/planning` can resolve open questions and flip the phase to `ready to ship`.
 - Implementation starts → `/implement` can run directly on a `wip` phase, asks the user to resolve or route open questions one by one, writes code in the target repo, runs `/simplify` when available, and marks the phase `implemented-pending-pr`.
 - Implementation is verified → `/evaluate` maps acceptance criteria to code and reports gaps before `/review-pr`, especially when the user implemented the phase manually.
-- Implementation ships → `/wiki-sync <pr>` syncs the merged PR into the wiki, creates or flips the ADR, and archives completed plan/source files under `archive/<namespace>/`.
+- Implementation ships → `/review-pr` stamps implementation PR metadata, then `/wiki-sync <pr>` syncs the merged PR into the wiki, creates or flips the ADR, and archives completed plan/source files under `archive/<namespace>/`.
 - Repeated chat feedback reveals a durable agent/team preference → `/workflow-from-chats` routes it to a skill update, wiki/runbook note, planning guidance, inbox follow-up, or no change.
 
 Keep original wording when phrasing carries product intuition.
@@ -82,10 +97,13 @@ Source ideas and phase plans should use frontmatter to preserve traceability as 
 
 ```yaml
 namespace: general
-status: brainstorm | planned | ready to ship | implemented-pending-pr | pr-open | implemented-and-synced | superseded | archived
+status: brainstorm | planned | ready to ship | implemented-pending-pr | pr-open | implemented-and-synced | resolved | superseded | archived
 source_dump:
 related_plan:
 related_pr:
+artifact_pr:
+related_doc:
+related_strategy:
 wiki_log:
 archive_after:
 archived_from:
@@ -93,6 +111,8 @@ archived_at:
 ```
 
 Use `namespace: general` for cross-team, workflow, repo, skill, operating-system, or otherwise unbound work. Teams can introduce additional namespaces for products, customers, domains, or repo groups as needed.
+
+`related_pr` is the implementation/submission PR that can advance lifecycle state and drive `/wiki-sync` archive checks. `artifact_pr` records PRs that only land brainstorms, plans, strategy docs, or other source artifacts; it is provenance only and must not by itself imply implementation completion or advance a file to `pr-open`. Use `related_doc` and `related_strategy` for source ideas that produce durable non-implementation outputs. `status: resolved` is a source-idea convention for no-implementation outputs that are complete as documents or strategy; plan phase files keep using the normal implementation lifecycle statuses.
 
 Archive completed source material instead of deleting it:
 
@@ -134,6 +154,7 @@ Poor fits (leave in the owning repo):
 
 The package includes agent-readable skills in [.agents/skills](.agents/skills):
 
+- `setup-brain` — one-time onboarding: configure a fresh template or migrate an existing wiki, and install skill copies for the team's agent tools
 - `brainstorm` — explore ideas before planning
 - `planning` — convert designs into per-phase technical specs; optionally flip `wip` → `ready to ship` after review for manual implementation
 - `implement` — resolve open questions, implement phase plans in target repos, run `/simplify`, and mark `implemented-pending-pr`
@@ -156,10 +177,12 @@ When adapting this template, keep skill descriptions generic enough to work acro
 
 ## Customization Checklist
 
+`/setup-brain` walks this checklist interactively (and re-running it reports what is already configured). The manual version:
+
 - Replace placeholder repos in [repos.yaml](repos.yaml) (`repo-a`, `repo-b`, `team-wiki` → your team's actual repos).
 - Choose initial lifecycle namespaces. Keep `general` unless there is a clear product, customer, domain, or workstream boundary.
-- Decide which wiki sections your team needs.
+- Rename the example [`wiki/product/`](wiki/product/) zone to your first product namespace (or delete it) and decide which other zones your team needs. `wiki/platform/` and `wiki/general/` keep their fixed names.
 - Rename or delete unused example pages.
-- Add team-specific vocabulary to [wiki/product/glossary.md](wiki/product/glossary.md).
-- Optionally create [`wiki/principles/<repo>/`](wiki/) for durable team principles distilled from `inbox/dump/` brainstorms.
+- Add team-specific vocabulary to the glossary in your product zone (e.g. [wiki/product/glossary.md](wiki/product/glossary.md)).
+- Optionally create `wiki/<namespace>/principles/<repo>/` for durable team principles distilled from brainstorm dumps; `/planning` and `/implement` read `engineering.md` there when present.
 - Add your first maintenance log entry to [wiki/logs/index.md](wiki/logs/index.md).

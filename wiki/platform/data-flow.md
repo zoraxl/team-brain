@@ -34,4 +34,4 @@ Sources:
 
 - [Architecture](architecture.md)
 - [Repo map](repo-map.md)
-- [Dependencies](../engineering/dependencies.md)
+- [Dependencies](engineering/dependencies.md)

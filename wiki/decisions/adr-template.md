@@ -2,6 +2,7 @@
 
 Status: proposed
 Date: YYYY-MM-DD
+Namespace: <product namespace | platform | general>
 
 ## Context
 

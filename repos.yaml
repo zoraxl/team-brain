@@ -43,12 +43,12 @@ repos:
     sources:
       - path: docs/architecture.md
         feeds:
-          - wiki/system/architecture.md
-          - wiki/system/repo-map.md
+          - wiki/platform/architecture.md
+          - wiki/platform/repo-map.md
       - path: docs/deploys.md
         feeds:
-          - wiki/engineering/deploys.md
-          - wiki/engineering/runbooks.md
+          - wiki/platform/engineering/deploys.md
+          - wiki/platform/engineering/runbooks.md
 
   - name: repo-b
     github: <org>/repo-b
@@ -62,8 +62,8 @@ repos:
     sources:
       - path: docs/integration.md
         feeds:
-          - wiki/system/data-flow.md
-          - wiki/engineering/dependencies.md
+          - wiki/platform/data-flow.md
+          - wiki/platform/engineering/dependencies.md
 
   - name: team-wiki
     github: <org>/team-wiki
@@ -78,4 +78,7 @@ repos:
     skills_home: true
     skill_surfaces:
       - .agents
+      - .claude
+      - .cursor
+      - .codex
     sources: []
