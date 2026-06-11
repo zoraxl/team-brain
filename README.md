@@ -1,234 +1,152 @@
-# Team-Brain
+# 🧠 Team-Brain
 
-A reusable, LLM-friendly internal wiki **and agent-driven workflow** for teams that need a durable cross-repo knowledge store.
+**An LLM-native team wiki and agent-driven development workflow — in one template.**
 
-This repository is the synthesis layer. Repo-local docs remain authoritative for implementation details; this wiki explains how the product concept, systems, engineering operations, decisions, and unresolved questions fit together — and the included agent skills run a full development loop on top of it.
+[![Works with Claude Code](https://img.shields.io/badge/Claude%20Code-ready-d97757)](https://claude.com/claude-code)
+[![Works with Cursor](https://img.shields.io/badge/Cursor-ready-3b82f6)](https://cursor.com)
+[![Works with Codex](https://img.shields.io/badge/Codex-ready-10a37f)](https://openai.com/codex)
+[![Skills](https://img.shields.io/badge/agent%20skills-18-8b5cf6)](.agents/README.md)
 
-**Rule: [`wiki/`](wiki/) contains only decided and implemented knowledge. Pre-implementation material lives in [`inbox/`](inbox/).**
+Team-Brain is a reusable knowledge system for teams working across multiple repositories. It is the **synthesis layer**: repo-local docs stay authoritative for implementation details, while this repo preserves how the product concept, architecture, decisions, operations, and open questions fit together — and ships the agent skills that run a full idea-to-wiki development loop on top of it.
 
-Start here:
+> **The one rule:** [`wiki/`](wiki/) contains only **decided and implemented** knowledge. Everything pre-implementation lives in [`inbox/`](inbox/) and [`plans/`](plans/).
 
-- [CONCEPT.md](CONCEPT.md) — wiki model, principles, and maintenance rules
-- [repos.yaml](repos.yaml) — machine-readable source of truth for all team repos, ownership, and source→wiki mappings
-- [wiki/index.md](wiki/index.md) — wiki table of contents
-- [wiki/logs/](wiki/logs/) — latest wiki maintenance logs
-- [inbox/](inbox/) — fragments, open questions, claims, threads, and brainstorm dumps
-- [.agents/README.md](.agents/README.md) — reusable agent skills and usage guidance
+---
 
-## Repository Layout
+## ⚡ Quick Start
+
+1. **Clone the template** (or use it as a GitHub template repo) next to your team's repos:
+
+   ```txt
+   GitHub/
+   ├── repo-a/
+   ├── repo-b/
+   └── team-brain/
+   ```
+
+2. **Open it in your agent tool.** The skills ship pre-installed for Claude Code (`.claude/skills/`), Cursor (`.cursor/skills/`), and Codex (`.codex/skills/`) as mirrors of the canonical [`.agents/skills/`](.agents/skills/) — no install step needed.
+
+3. **Run `/setup-brain`.** It detects whether you're configuring a fresh template or migrating an existing wiki, walks the customization checklist ([`repos.yaml`](repos.yaml), namespaces, zones, placeholders), prunes the skill mirrors for tools you don't use, and hands off to `/skills-sync` for installing skills into your implementation repos. Re-running it later doubles as a setup health check.
+
+---
+
+## 🔁 The Development Loop
+
+Every skill owns one verb. Ideas flow from exploration to durable wiki knowledge through an explicit, metadata-tracked lifecycle:
+
+```mermaid
+flowchart LR
+    B["💡 /brainstorm"] --> P["📋 /planning"]
+    P --> I["🔨 /implement"]
+    I --> E["✅ /evaluate"]
+    E --> R["🔀 /review-pr"]
+    R --> M(["merge"])
+    M --> W["📚 /wiki-sync"]
+    W -.->|"archives plans,<br/>creates ADR,<br/>updates wiki"| B
+```
+
+Each stage stamps lifecycle frontmatter, so any agent (or human) can pick up a file cold and know exactly where it stands:
+
+```mermaid
+flowchart LR
+    s1["brainstorm"] --> s2["planned"] --> s3["ready to ship"] --> s4["implemented-<br/>pending-pr"] --> s5["pr-open"] --> s6["implemented-<br/>and-synced"] --> s7["archived"]
+    s1 -.->|"durable doc/strategy,<br/>no implementation"| s8["resolved"] -.-> s7
+```
+
+**Implementation PRs vs. artifact PRs.** A PR that merely lands a brainstorm, plan, or strategy doc is recorded as `artifact_pr` and never advances lifecycle state. Only a PR that ships the actual deliverable gets stamped into `related_pr` and moves a phase to `pr-open` — `/review-pr` classifies every PR as `implementation`, `artifact`, or `mixed` before stamping. This keeps "we wrote the plan" from ever being mistaken for "we built it."
+
+## 🗺️ Wiki Zones
+
+Wiki knowledge is routed into **zones** so distinct product domains never mix on the same page:
+
+| Zone | Contains |
+|---|---|
+| `wiki/<namespace>/` | Product/domain knowledge for one namespace — concept, vocabulary, architecture, app/API behavior. One zone per product, customer, domain, or workstream. |
+| `wiki/platform/` | Shared implementation substrate — infrastructure, deploys, dependencies, runbooks, incidents. |
+| `wiki/general/` | Team/brain workflow knowledge — lifecycle semantics, conventions, process principles. |
+| `wiki/decisions/<zone>/` | ADRs, grouped by zone with global numbering and a `Namespace:` field. |
+| `wiki/logs/` | Maintenance log and synced-PR ledger (fixed root path). |
+
+**The boundary rule: route by implementation sharing, not by topic.** If changing the knowledge would force edits in more than one namespace's code, it belongs in `platform`; if it only touches one namespace's code, it belongs in that namespace's zone — even when the concept sounds shared. See [CONCEPT.md](CONCEPT.md).
+
+## 🛠️ The Skills
+
+| Skill | Invoke | What it does |
+|---|---|---|
+| `setup-brain` | `/setup-brain` | One-time (re-runnable) onboarding. **New brain**: guided fill-in of `repos.yaml`, namespaces, zones, and template placeholders. **Existing brain**: report-first migration of an existing wiki into this structure. Manages skill mirrors per agent tool and delegates implementation-repo installs to `/skills-sync`. |
+| `brainstorm` | `/brainstorm <topic>` | Explore a problem before building. Saves to `inbox/dump/` on request with lifecycle frontmatter. |
+| `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<namespace>/<feature-slug>/` at `status: wip`. Phase 3: flip a phase to `ready to ship` only after every open question is resolved or routed. |
+| `implement` | `/implement <phase>` | Implements a phase in the target repo resolved from `repos.yaml`. Resolves open questions on `wip` plans one by one, runs `/simplify`, marks the phase `implemented-pending-pr`. |
+| `simplify` | `/simplify <paths>` | Scoped code-quality pass for recently changed code. Preserves behavior. |
+| `evaluate` | `/evaluate <feature>` | Optional pre-PR gate. Maps each acceptance criterion to code; reports `complete` / `partial` / `missing` / `unclear` plus lifecycle link gaps. |
+| `review-pr` | `/review-pr [<pr>]` | Pre-merge. Runs validation, detects linked issues, classifies the PR (`implementation` / `artifact` / `mixed`), stamps `related_pr` or `artifact_pr`, writes title + body + score via `gh`. |
+| `wiki-sync` | `/wiki-sync <pr-or-doc>` | Post-merge. **PR mode**: creates/flips the ADR, updates zone pages, appends logs, archives completed lifecycle chains. **Doc mode**: ingests existing implemented knowledge. Idempotent via the synced-PR ledger. |
+| `wiki-query` | `/wiki-query <question>` | Read-only retrieval. Zone-aware search; cites sources, separates stable knowledge from uncertainty. |
+| `wiki-lint` | `/wiki-lint` | Periodic health audit — stale pages, dangling links, mixed-namespace pages, unresolved `repos.yaml` feeds. |
+| `wiki-adr` | `/wiki-adr` | Record an ad-hoc architecture decision outside the `/planning → /wiki-sync` flow, into `wiki/decisions/<zone>/`. |
+| `wiki-runbook` | `/wiki-runbook` | Document operational procedures into the zone-appropriate runbook pages. |
+| `workflow-from-chats` | `/workflow-from-chats` | Mine repeated chat feedback into durable workflow guidance — skill update, runbook note, planning rule, or inbox follow-up. |
+| `create-bug-issue` | `/create-bug-issue <bug>` | Capture a bug as a labeled GitHub issue in the owning repo. |
+| `pr-score-log` | `/pr-score-log` | Table of merged PRs and their `review-pr` scores. |
+| `rebase-onto-main` | `/rebase-onto-main` | Safe rebase onto the configured base branch with an audit report. |
+| `lifecycle-audit` | `/lifecycle-audit` | Report-first cleanup for historical ideas, plans, and metadata backfill — including artifact-PR migration for files that predate the contract. |
+| `skills-sync` | `/skills-sync` | Admin: sync registered skills across repos and agent surfaces while preserving repo-specific customization. |
+
+Full reference: [.agents/README.md](.agents/README.md)
+
+## 📁 Repository Layout
 
 ```txt
 team-brain/
-├── CONCEPT.md
-├── repos.yaml
+├── CONCEPT.md                      # wiki model, zones, lifecycle metadata, principles
+├── repos.yaml                      # machine-readable source of truth: repos, ownership,
+│                                   # source→wiki feeds, validation commands, skill surfaces
 ├── sources/
 │   └── index.md                    # human-readable source map (companion to repos.yaml)
-├── inbox/
-│   ├── chats.md
-│   ├── fragments.md
-│   ├── screenshots.md
-│   ├── open-questions.md
-│   ├── claims.md
-│   ├── backlog.md
-│   └── threads.md
+├── inbox/                          # everything pre-implementation
+│   ├── fragments.md, chats.md, screenshots.md, threads.md
+│   ├── open-questions.md, claims.md, backlog.md
+│   └── dump/                       # /brainstorm outputs (created lazily)
 ├── plans/                          # active phase specs from /planning
-│   └── _template/
-│       └── phase-N.md
-├── archive/                        # completed lifecycle material by namespace (created lazily)
-│   └── <namespace>/
-│       ├── ideas/YYYY-MM/
-│       └── plans/YYYY-MM/
+│   └── _template/phase-N.md
+├── archive/                        # completed lifecycle chains (created lazily)
+│   └── <namespace>/{ideas,plans}/YYYY-MM/
 ├── .agents/
 │   ├── README.md
 │   └── skills/                     # canonical skill source
-├── .claude/skills/                 # mirror for Claude Code (managed by /skills-sync)
-├── .cursor/skills/                 # mirror for Cursor
-├── .codex/skills/                  # mirror for Codex
-└── wiki/
+├── .claude/skills/                 # mirror for Claude Code   ┐
+├── .cursor/skills/                 # mirror for Cursor        ├─ managed by /skills-sync
+├── .codex/skills/                  # mirror for Codex         ┘
+└── wiki/                           # decided + implemented knowledge only
     ├── index.md
-    ├── logs/
-    │   ├── index.md
-    │   └── synced-prs.md
+    ├── logs/                       # maintenance log + synced-PR ledger
     ├── decisions/                  # ADRs under decisions/<zone>/, global numbering
     ├── product/                    # example product zone — rename to your first namespace
     ├── platform/                   # shared implementation substrate (incl. engineering/)
     └── general/                    # team workflow knowledge (created lazily)
 ```
 
-Wiki pages are routed into **zones**: one `wiki/<namespace>/` zone per product/domain, `wiki/platform/` for implementation substrate shared across namespaces, and `wiki/general/` for workflow knowledge. The boundary rule: route by implementation sharing, not by topic — see [CONCEPT.md](CONCEPT.md).
+## 📖 Using the Brain Day-to-Day
 
-## Recommended local setup
-
-The wiki works best when the related repos are cloned side by side and available to the agent locally. See [repos.yaml](repos.yaml) for the full path list. Typical layout:
+**Before starting work** — ask what already exists:
 
 ```txt
-GitHub/
-├── repo-a/
-├── repo-b/
-└── team-brain/
+/wiki-query what do we know about <feature/system>?
+/wiki-query which decisions affect <area>?
 ```
 
-Local repos are the primary workflow because the skills can quickly read `CONCEPT.md`, `wiki/index.md`, `repos.yaml`, and source docs referenced by relative paths like `../repo-a/docs/architecture.md`. GitHub or `gh` access is a fallback when a source repo is missing locally.
+**When an idea surfaces** — explore it with `/brainstorm`; the saved dump is the bridge from "vague idea" to "ready for `/planning`". Raw half-thoughts go straight into `inbox/fragments.md` or `inbox/chats.md`.
 
-## Agent Workflow
+**When it solidifies** — `/planning` writes one spec per phase under `plans/<namespace>/<feature-slug>/`, each at `status: wip` with open questions tracked explicitly. Nothing flips to `ready to ship` until every question is resolved in-place, routed to `tests.md` (empirical), or routed to `inbox/backlog.md` (deferred).
 
-```
-/brainstorm → /planning → /implement → /evaluate → /review-pr → merge → /wiki-sync
-```
+**Build it** — `/implement` consumes a phase, then `/evaluate` audits acceptance criteria if you built it yourself, then `/review-pr` validates, classifies, and stamps the PR.
 
-Each skill owns one verb. See [.agents/README.md](.agents/README.md) for the full reference.
+**After merge** — `/wiki-sync <pr>` turns the merged PR into durable knowledge: ADR created or flipped to `accepted`, zone pages updated, tunable knobs preserved, the completed plan/idea chain archived under `archive/<namespace>/`. Incomplete chains stay active — a source idea is never archived while linked phases remain unfinished.
 
-| Skill | Invoke | What it does |
-|---|---|---|
-| `setup-brain` | `/setup-brain` | One-time (re-runnable) onboarding. **New brain**: guided fill-in of `repos.yaml`, namespaces, zones, and template placeholders. **Existing brain**: report-first migration of an existing wiki into this structure. Installs skill copies for the agent tools the team uses (Claude Code, Cursor, Codex, …). |
-| `brainstorm` | `/brainstorm <topic>` | Explore a problem before building. Saves to `inbox/dump/` on request. |
-| `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<namespace>/<feature-slug>/` at `status: wip`. Phase 3: optionally flip a phase to `status: ready to ship` when a user wants to implement manually. |
-| `implement` | `/implement <phase-file-or-feature>` | Implements a phase in the target repo resolved from `repos.yaml`. If the plan is still `wip`, it resolves open questions with the user one by one before coding. Runs `/simplify` and marks the phase `implemented-pending-pr`. |
-| `simplify` | `/simplify <paths-or-diff>` | Scoped code-quality pass for recently changed implementation code. Preserves behavior while improving clarity, reuse, and maintainability. |
-| `evaluate` | `/evaluate <feature-slug>` | Optional pre-PR gate, especially for manually implemented phases. Maps each acceptance criterion to code; reports `complete` / `partial` / `missing` / `unclear`. Skips phases still at `status: wip`. |
-| `review-pr` | `/review-pr [<pr-number>]` | Pre-merge. Runs validation (lint/format/typecheck/UI), auto-detects linked issue, writes title + body + change-breakdown score, applies via `gh`. |
-| `wiki-sync` | `/wiki-sync <pr-or-doc>` | Post-merge. **PR mode**: creates/flips ADR, updates wiki pages, appends log, archives the matching lifecycle files. **Doc mode**: ingests existing implemented knowledge directly. |
-| `wiki-query` | `/wiki-query <question>` | Read-only. Searches wiki + ADRs + `repos.yaml`. Cites sources, distinguishes stable knowledge from uncertainty. |
-| `wiki-lint` | `/wiki-lint` | Periodic health audit. |
-| `wiki-adr` | `/wiki-adr` | Record an ad-hoc architecture decision outside the `/planning → /wiki-sync` flow. |
-| `wiki-runbook` | `/wiki-runbook` | Document cross-repo operational procedures. |
-| `workflow-from-chats` | `/workflow-from-chats <excerpts-or-target>` | Mine repeated chat feedback into durable workflow guidance. Routes findings to skill updates, wiki/runbook notes, planning guidance, inbox follow-ups, or no change. |
-| `create-bug-issue` | `/create-bug-issue <bug>` | Captures a bug in the appropriate GitHub repo with the `bug` label. |
-| `pr-score-log` | `/pr-score-log` | Lists merged PRs and the `review-pr` score totals from their PR bodies. |
-| `rebase-onto-main` | `/rebase-onto-main` | Safely rebases a feature branch onto the configured base branch and writes an audit report. |
-| `lifecycle-audit` | `/lifecycle-audit` | Report-first cleanup audit for historical ideas, plans, PRs, archives, and wiki-sync state. |
-| `skills-sync` | `/skills-sync` | Admin workflow for syncing registered skills from this repo to configured agent surfaces. |
+**Periodically** — `/wiki-lint` for wiki health, `/lifecycle-audit` for historical cleanup, `/workflow-from-chats` to turn repeated feedback into durable workflow rules.
 
-## Getting Started
+## 🧭 Rule of Thumb
 
-The skills ship pre-installed for Claude Code (`.claude/skills/`), Cursor (`.cursor/skills/`), and Codex (`.codex/skills/`) as mirrors of the canonical `.agents/skills/`, so they're discoverable the moment you open the repo in any of those tools. After cloning, run `/setup-brain`: it detects whether you're configuring a fresh template or migrating an existing wiki, walks the customization checklist, prunes the surface mirrors for tools your team doesn't use (or adds a custom surface), and records the choices in `repos.yaml` under `skill_surfaces`. Re-running it later acts as a setup health check.
+> Repo docs explain how one part works. This brain explains how the whole system fits together, why decisions were made, and what the team knows so far — with the uncertainty kept visible.
 
-## Copy-Paste Setup Prompt
-
-Paste this into Claude Code, Cursor, Codex, or another agent after opening this repo:
-
-```txt
-Set up this repository as an LLM-maintained cross-repo wiki and agent workflow.
-
-Please read:
-- README.md
-- CONCEPT.md
-- repos.yaml
-- wiki/index.md
-- .agents/README.md
-
-Then register or follow the reusable skills in .agents/skills:
-- setup-brain
-- brainstorm
-- planning
-- implement
-- simplify
-- evaluate
-- review-pr
-- wiki-sync
-- wiki-query
-- wiki-lint
-- wiki-adr
-- wiki-runbook
-- workflow-from-chats
-- create-bug-issue
-- pr-score-log
-- rebase-onto-main
-- lifecycle-audit
-- skills-sync
-
-When I want to configure this template or migrate an existing wiki into it, use setup-brain.
-When I want to explore an idea, use brainstorm.
-When I want to turn a brainstorm or intent into phase specs, use planning.
-When I want to turn a phase into code, use implement.
-When I have implemented a phase and want to verify it, use evaluate.
-When I'm ready to open or update a PR, use review-pr.
-When a PR has merged and the wiki needs syncing, use wiki-sync.
-When I have a question about existing knowledge, use wiki-query.
-When I want a wiki health pass, use wiki-lint.
-When a durable architecture/infrastructure decision needs recording outside /planning, use wiki-adr.
-When I want to document an operational procedure, use wiki-runbook.
-When repeated chat feedback should become durable workflow guidance, use workflow-from-chats.
-When I need to capture a bug for later, use create-bug-issue.
-When I need merged PR score history, use pr-score-log.
-When I need to sync a feature branch with the base branch, use rebase-onto-main.
-When old lifecycle files need cleanup, use lifecycle-audit.
-When skill copies drift across repos, use skills-sync.
-
-Preserve source authority: repo-local docs and linked sources remain authoritative; this wiki synthesizes rather than copies them.
-Track uncertainty in inbox/open-questions.md.
-Track unsupported assertions in inbox/claims.md.
-Update repos.yaml when introducing a new authoritative source.
-Update wiki/index.md when adding a new page.
-Append meaningful maintenance entries to wiki/logs/index.md.
-
-First, run setup-brain: inspect the current repo, report what is already configured versus still needed, and walk me through the remaining setup for this team.
-```
-
-Claude Code, Cursor, and Codex discover the skills automatically from the pre-installed surface mirrors. For another tool that requires skills to live in a specific directory, `/setup-brain` installs the copies for you (it copies each folder from `.agents/skills/` into the tool's skills directory while preserving the `SKILL.md` file inside each folder, and records the chosen surfaces in `repos.yaml` under `skill_surfaces`). Ongoing drift between copies is managed by `/skills-sync`.
-
-## How To Use This Wiki
-
-### 1. Before starting work
-
-Ask what already exists:
-
-```txt
-Use wiki-query: what do we know about <feature/system>?
-Use wiki-query: which decisions affect <area>?
-Use wiki-query: what open questions exist around <topic>?
-```
-
-### 2. During development
-
-Repo-local docs remain authoritative for implementation details. See [repos.yaml](repos.yaml) for which repo owns which components.
-
-When a rough idea surfaces while you're working — something worth thinking through but not yet ready to build — explore it with `/brainstorm`. The output saves to `inbox/dump/` on request and is the bridge from "vague idea" to "ready for `/planning`."
-
-For raw, unstructured capture (an observation, half-formed thought, chat takeaway), `inbox/fragments.md` and `inbox/chats.md` are still fine. Skim them periodically and either `/brainstorm` the promising ones or delete dead ones.
-
-When repeated chat feedback points to a stable team or agent preference, use `/workflow-from-chats` to decide whether it belongs in a skill, wiki/runbook page, planning guidance, inbox follow-up, or nowhere.
-
-### 3. Design and planning
-
-When a brainstorm solidifies into something worth building, use `/planning`:
-
-```txt
-Use planning: <paste your brainstorm doc or describe the feature>
-```
-
-`/planning` writes one detailed technical spec per phase, grouped under a namespace and feature folder: `plans/<namespace>/<feature-slug>/<phase-slug>.md`. Use `general` when the work is not tied to a specific product, customer, domain, or workstream. Each new spec is `status: wip`.
-
-If you plan to implement the phase yourself, review the plan and resolve its open questions, then tell `/planning` to flip the phase to `ready to ship`. That status means a human has reviewed the phase and it is safe to build outside the `/implement` skill.
-
-### 4. Implementation
-
-You can also run `/implement` directly on a `wip` or `ready to ship` phase:
-
-```txt
-Use implement: plans/<namespace>/<feature-slug>/<phase-slug>.md
-```
-
-If the phase is still `wip`, `/implement` reads the open questions and asks you to resolve or route them one by one before coding. It then treats the resolved phase as implementation scope, resolves the target repo through `repos.yaml`, writes the code, runs `/simplify` on the changed files when available, and marks the phase `implemented-pending-pr`.
-
-### 5. After implementation, before a PR
-
-Run `/evaluate` when you implemented the phase yourself, or when you want a separate acceptance-criteria audit before opening a PR. It maps each acceptance criterion to code and reports gaps. It does **not** run lint/typecheck/UI (that's `/review-pr`) and does **not** touch the wiki.
-
-### 6. Before opening a PR
-
-Run `/review-pr` from whichever repo you're in. It runs validation, auto-detects a linked GitHub issue, and writes the PR title + body + score to GitHub. It also classifies the PR as `implementation`, `artifact` (only lands brainstorms/plans/strategy docs), or `mixed`, and stamps `related_pr` or `artifact_pr` on the lifecycle files accordingly — only implementation PRs advance a phase to `pr-open`. ADR work happens later in `/wiki-sync`.
-
-### 7. After merge
-
-Run `/wiki-sync <pr>`. It creates the ADR (or flips an existing one to `accepted`), updates affected wiki pages, appends a log entry, records the PR in `wiki/logs/synced-prs.md`, and archives completed plan/source files under `archive/<namespace>/`. Active or incomplete phases stay in `plans/<namespace>/<feature-slug>/`.
-
-### 8. Periodic maintenance
-
-`/wiki-lint` for stale pages, dangling links, runbooks needing exact commands, and pages that no longer match implementation.
-
-Use `/lifecycle-audit` for older or messy files that predate the lifecycle metadata model. It reports proposed archive or metadata actions first and only applies changes after explicit approval.
-
-## Rule Of Thumb
-
-Repo docs explain how one part works. This wiki explains how the whole system fits together, why decisions were made, and what the team knows so far.
+Start reading: [CONCEPT.md](CONCEPT.md) → [repos.yaml](repos.yaml) → [wiki/index.md](wiki/index.md)
