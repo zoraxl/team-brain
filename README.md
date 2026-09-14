@@ -78,11 +78,11 @@ Wiki knowledge is routed into **zones** so distinct product domains never mix on
 | `brainstorm-design` | `/brainstorm-design <topic>` | Lightweight HTML layout sketch before planning. Saves to `inbox/mocks/` on request. |
 | `pressure-test` | `/pressure-test <topic>` | 1% rule: is the end-to-end outcome defensible, or a thin wrapper? Saves to `strategy/pressure-tests/` on request. |
 | `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<namespace>/<feature-slug>/` at `status: wip`. Phase 3: flip a phase to `ready to ship` only after every open question is resolved or routed. |
-| `implement` | `/implement <phase>` | Implements a phase in the target repo resolved from `repos.yaml`. Resolves open questions on `wip` plans one by one, runs `/simplify`, marks the phase `implemented-pending-pr`. |
+| `implement` | `/implement <phase>` | Implements a phase in the target repo resolved from `repos.yaml`. Branches from latest main first. Resolves open questions on `wip` plans one by one, runs `/simplify`, marks the phase `implemented-pending-pr`. |
 | `simplify` | `/simplify <paths>` | Scoped code-quality pass for recently changed code. Preserves behavior. |
-| `evaluate` | `/evaluate <feature>` | Optional pre-PR gate. Maps each acceptance criterion to code; reports `complete` / `partial` / `missing` / `unclear` plus lifecycle link gaps. |
-| `review-pr` | `/review-pr [<pr>]` | Pre-merge. Runs validation, detects linked issues, classifies the PR (`implementation` / `artifact` / `mixed`), stamps `related_pr` or `artifact_pr`, writes title + body + score via `gh`. |
-| `wiki-sync` | `/wiki-sync <pr-or-doc>` | Post-merge. **PR mode**: creates/flips the ADR, updates zone pages, appends logs, archives completed lifecycle chains. **Doc mode**: ingests existing implemented knowledge. Idempotent via the synced-PR ledger. |
+| `evaluate` | `/evaluate <feature>` | Optional pre-PR gate. Maps each acceptance criterion to code; applies obvious fixes (max two cycles) and reports a Fix report; marks complete phases `implemented-pending-pr`. |
+| `review-pr` | `/review-pr [<pr>]` | Pre-merge. Runs validation, detects linked issues, classifies the PR (`implementation` / `artifact` / `mixed`), stamps `related_pr` or `artifact_pr`, writes title + body + score via `gh`. Lifecycle-stamp-only PRs skip scoring and may merge after an explicit yes. |
+| `wiki-sync` | `/wiki-sync <pr-or-doc>` | Post-merge. **PR mode**: creates/flips the ADR, updates zone pages, appends logs, archives completed lifecycle chains into feature folders. Already-synced PRs still get archive cleanup. **Doc mode**: ingests existing implemented knowledge. Idempotent via the synced-PR ledger. |
 | `wiki-query` | `/wiki-query <question>` | Read-only retrieval. Zone-aware search; cites sources, separates stable knowledge from uncertainty. |
 | `wiki-lint` | `/wiki-lint` | Periodic health audit — stale pages, dangling links, mixed-namespace pages, unresolved `repos.yaml` feeds. |
 | `wiki-adr` | `/wiki-adr` | Record an ad-hoc architecture decision outside the `/planning → /wiki-sync` flow, into `wiki/decisions/<zone>/`. |
@@ -116,7 +116,9 @@ team-brain/
 ├── plans/                          # active phase specs from /planning
 │   └── _template/phase-N.md
 ├── archive/                        # completed lifecycle chains (created lazily)
-│   └── <namespace>/{ideas,plans}/YYYY-MM/
+│   └── <namespace>/
+│       ├── ideas/YYYY-MM/
+│       └── plans/YYYY-MM/<feature-slug>/
 ├── .agents/
 │   ├── README.md
 │   └── skills/                     # canonical skill source

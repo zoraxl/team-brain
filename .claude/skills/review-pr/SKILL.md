@@ -1,7 +1,7 @@
 ---
 name: review-pr
-description: Run pre-PR validation (lint/format/typecheck/UI), detect linked issues, generate the PR package (title, description, change breakdown, score), and apply it to GitHub. Works with a PR number or the current branch's committed changes vs its base. Invokable from any repo. Use when the user says "/review-pr", "review my pr", "write a pr", "summarize a pr", "score my pr", "prepare a pr for submission".
-version: 3.0.0
+description: Run pre-PR validation (lint/format/typecheck/UI), detect linked issues, generate the PR package (title, description, change breakdown, score), and apply it to GitHub. Lifecycle-stamp-only PRs may be merged after an explicit user confirmation; never auto-merge other PR types. Works with a PR number or the current branch's committed changes vs its base. Invokable from any repo. Use when the user says "/review-pr", "review my pr", "write a pr", "summarize a pr", "score my pr", "prepare a pr for submission".
+version: 3.1.0
 allowed-tools: ["Bash"]
 triggers:
   - "review.{0,10}(my.{0,5})?(pr|pull.?request|changes|diff)"
@@ -46,13 +46,35 @@ git diff origin/$BASE...HEAD
 
 Read every file in the diff before continuing.
 
+### Lifecycle-stamp-only detection
+
+Before continuing to validation and the scored PR package, classify whether this PR is **lifecycle-stamp-only**.
+
+A PR is lifecycle-stamp-only when **all** of the following hold:
+
+1. Every changed file is a lifecycle-bearing markdown path (`plans/…`, `inbox/…`, `archive/…`, or other plan/source/strategy docs with lifecycle frontmatter).
+2. Every substantive diff hunk only updates lifecycle frontmatter fields such as `status`, `related_pr`, `artifact_pr`, `wiki_log`, `archive_after`, `archived_from`, `archived_at` — not plan body, brainstorm content, skill code, product code, or other deliverables.
+3. Optionally reinforced by commit subjects like `Stamp lifecycle metadata for PR #…`.
+
+If the PR mixes stamp fields with any deliverable content (implementation, artifact body, skill/workflow changes), it is **not** stamp-only — continue with the normal Steps 2–6 template.
+
+**When lifecycle-stamp-only:**
+
+- Skip Step 2 validation (no lint/format/typecheck/UI gate).
+- Skip Step 3 linked-issue prompting (do not ask about closing issues; carry an existing `Closes #N` only if already present).
+- Skip the scored Step 5 **PR Description Template** (no PR Details / Testing / Change Breakdown / Total Score).
+- Resolve the Lifecycle links from Step 3.5 only as needed to fill the stamp template, then jump to **Step 5b — Lifecycle stamp PR package**, then apply via Step 6.
+- After Step 6 apply, run **Step 6.4**: alarm the user and merge only after an explicit `yes`. Never auto-merge any other PR type.
+- Do not invent Feature/Fix/Test categories or effort scores for stamp-only PRs.
+- If this stamp-only run is only refreshing metadata already pointed at an existing implementation/artifact PR URL, keep that URL in the body; do not treat the stamp PR as a new deliverable.
+
 ---
 
 ## Step 2 — Run validation
 
 Validation runs against the **current working tree** before the PR is created or updated. If validation fails, stop — fix and re-run.
 
-**Skip Step 2** when the user only wants a read-only summary of an existing PR (Option A, no apply step). Note in the output that local validation was not run.
+**Skip Step 2** when the user only wants a read-only summary of an existing PR (Option A, no apply step), **or** when the PR is lifecycle-stamp-only (see Step 1). Note in the output that local validation was not run.
 
 ### Choosing commands
 
@@ -83,6 +105,8 @@ If any check fails:
 ---
 
 ## Step 3 — Detect linked issue
+
+**Skip Step 3** when the PR is lifecycle-stamp-only, except to preserve an existing closing reference already in the PR body.
 
 Auto-detect first. Look for an issue number reference in this order:
 
@@ -181,6 +205,8 @@ Group changes into logical items for the change breakdown table in Step 5.
 
 ## Step 5 — Generate the PR package
 
+If the PR is lifecycle-stamp-only (Step 1), **do not use** the scored PR Description Template below — use **Step 5b** instead.
+
 Produce exactly **two copy-pasteable blocks**:
 
 1. **PR Title** — single-line code block.
@@ -193,8 +219,11 @@ Produce exactly **two copy-pasteable blocks**:
 - Specific — mention the feature, area, or component.
 - No trailing period.
 - No generic titles like "Update docs" or "Fix stuff".
+- Lifecycle-stamp-only titles should follow Step 5b (e.g. `Stamp lifecycle metadata for <phase/feature>`).
 
 ### PR Description Template
+
+Use this template only for normal implementation, artifact, or mixed PRs — **not** for lifecycle-stamp-only PRs.
 
 ```
 ## PR Details
@@ -289,11 +318,50 @@ If `/evaluate` ran in the same session and produced an acceptance-criteria check
 
 `max` = number of categories × 10. List categories in descending order of score.
 
+### Step 5b — Lifecycle stamp PR package
+
+For lifecycle-stamp-only PRs, produce exactly **two** copy-pasteable blocks using this lighter template. Do **not** include Change Breakdown, effort scores, Testing, or Test Evidence.
+
+**PR Title** (≤72 chars, imperative):
+
+```
+Stamp lifecycle metadata for {phase_or_feature}
+```
+
+**PR Description:**
+
+```
+## Lifecycle stamp
+
+**Summary:** Stamp lifecycle frontmatter only — no implementation or artifact deliverable in this PR.
+
+{closes_reference_only_if_already_present}
+
+## Lifecycle
+
+- Plan: `{plan_path_or_none}`
+- Source idea: `{source_idea_path_or_none}`
+- Lifecycle scope: `{single phase | full linked plan folder | none}`
+- Implementation scope: `none (stamp only)`
+- Artifact scope: `none (stamp only)`
+- Lifecycle metadata: `{stamped | not stamped - <reason>}`
+
+**Fields updated:**
+
+- `{path}`: `{field}={value}` …
+```
+
+Keep the body short. List each stamped file and the fields changed. If the stamp points at an existing deliverable PR, mention that URL in the fields list (`related_pr` / `artifact_pr`) rather than rewriting this PR as the deliverable.
+
 ---
 
-## Step 6 — Apply to GitHub
+## Step 6 — Apply to GitHub and stamp lifecycle metadata
 
-Immediately apply. Do **not** ask for confirmation.
+Immediately apply the PR package. Do **not** ask for confirmation to create or update the PR. Lifecycle stamping is part of applying the PR, not a separate optional cleanup. Merge is different: only lifecycle-stamp-only PRs may be merged by this skill, and only after Step 6.4's explicit confirmation.
+
+For lifecycle-stamp-only PRs, apply the Step 5b body. If the branch already contains the stamp commit and frontmatter is complete, create/update the PR and set `Lifecycle metadata: stamped` without inventing a second stamp commit. Do not replace an existing deliverable PR body with the stamp template when this run is only appending a stamp commit onto that deliverable PR — keep the scored/full body and only refresh the `## Lifecycle` section.
+
+### Step 6.1 — Create or update the PR
 
 **If a PR already exists (PR number is known):**
 
@@ -323,11 +391,62 @@ gh pr create --title "<title>" --body-file "$BODY_FILE"
 
 After applying, check for auto-appended footers (e.g., "Made with Cursor"). If present, re-apply with the clean body.
 
+### Step 6.4 — Lifecycle-stamp-only merge (confirmation required)
+
+This step exists **only** for PRs classified as lifecycle-stamp-only in Step 1. Implementation, artifact, mixed, and any PR with deliverable content must never be merged by `/review-pr`, even if the user asks in the same turn.
+
+Skip this step when the user only wanted a read-only summary (Option A, no apply).
+
+**Hard stop.** After Step 6.1, do not merge yet. Show this alarm and wait for an explicit yes/no:
+
+```
+ALARM — this will merge to the base branch.
+
+This PR is classified as lifecycle-stamp-only (frontmatter metadata only).
+`/review-pr` can merge stamp-only PRs after you confirm.
+Implementation, artifact, mixed, and any PR with deliverable content are never auto-merged by this skill.
+
+PR: {url}
+Base: `{baseRefName}`
+Files:
+- `{path}`: {fields}
+
+This lands on `{base}` immediately, or via GitHub auto-merge if required checks are still running. It cannot be undone from this skill.
+
+Merge this stamp-only PR now? Reply `yes` to merge, or `no` to leave it open.
+```
+
+Confirmation rules:
+
+- Stop and wait. Do not merge in the same turn as the first `/review-pr` invocation, even if the user said "merge it" up front. They must see the alarm and the file list first.
+- Treat only a clear `yes`, `merge`, or `merge it` in the reply to this alarm as consent. `ok`, `looks good`, `continue`, `ship it`, `lgtm`, and silence are **no**.
+- If the user replies `no`, leave the PR open and report the URL. Do not ask again in this run.
+- If classification was borderline, do not offer merge. Leave the PR open and say why.
+- If the user replies `yes`, re-verify stamp-only classification against the final pushed diff before merging. If the diff is no longer stamp-only, refuse to merge and say so.
+
+Merge commands after an explicit `yes` (never `--admin`, never bypass required checks):
+
+```bash
+# If the PR is mergeable now:
+gh pr merge <number> --squash --delete-branch
+
+# If required checks are still running:
+gh pr merge <number> --auto --squash --delete-branch
+```
+
+If merge or auto-merge fails, report the PR URL and the blocking reason. Do not retry with admin override.
+
+After a successful merge or auto-merge enablement, report the URL and the merged / auto-merge state. Do not run `/wiki-sync` from this step. A stamp-only PR is not the deliverable; wiki-sync the implementation or artifact PR it points at, if any.
+
 ---
 
 ## Common Mistakes
 
-- **Skipping validation** — Step 2 is a hard gate. Do not generate the PR package if validation fails.
+- **Skipping validation** — Step 2 is a hard gate for normal PRs. Do not generate the scored PR package if validation fails. Lifecycle-stamp-only PRs intentionally skip Step 2.
+- **Scoring a lifecycle stamp** — stamp-only PRs must use Step 5b, not the scored Change Breakdown / Total Score package.
+- **Merging a non-stamp PR** — `/review-pr` never merges implementation, artifact, mixed, or unclassified PRs.
+- **Merging a stamp PR without an explicit yes** — the Step 6.4 alarm is a hard stop. Do not treat apply-step "do not ask" as merge consent.
+- **Classifying mixed diffs as stamp-only to unlock merge** — if any hunk is not a lifecycle frontmatter field, it is not stamp-only and must not be merged by this skill.
 - **Scoring by length** — a long reformat that doesn't change behavior stays 1–2.
 - **Merging unrelated edits** — keep change breakdown categories distinct.
 - **Including uncommitted changes** — only committed work is in scope.

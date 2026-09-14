@@ -107,7 +107,7 @@ Only after the user explicitly approves one or more proposed actions:
 2. Move active plans to `plans/<namespace>/<feature-slug>/`.
 3. Archive implemented synced files to:
    - `archive/<namespace>/ideas/YYYY-MM/`
-   - `archive/<namespace>/plans/YYYY-MM/`
+   - `archive/<namespace>/plans/YYYY-MM/<feature-slug>/`
 4. Add or update metadata:
    ```yaml
    namespace:

@@ -120,7 +120,7 @@ Use `namespace: general` for cross-team, workflow, repo, skill, operating-system
 Archive completed source material instead of deleting it:
 
 - Ideas: `archive/<namespace>/ideas/YYYY-MM/`
-- Plans: `archive/<namespace>/plans/YYYY-MM/`
+- Plans: `archive/<namespace>/plans/YYYY-MM/<feature-slug>/`
 
 Never archive a source idea or plan folder unless the whole linked chain is complete, superseded, or explicitly approved for legacy cleanup.
 
@@ -161,12 +161,12 @@ The package includes agent-readable skills in [.agents/skills](.agents/skills):
 - `brainstorm` — explore ideas before planning
 - `brainstorm-design` — lightweight HTML layout sketch before planning
 - `pressure-test` — 1% rule: test whether an end-to-end outcome is defensible before planning
-- `planning` — convert designs into per-phase technical specs; optionally flip `wip` → `ready to ship` after review for manual implementation
-- `implement` — resolve open questions, implement phase plans in target repos, run `/simplify`, and mark `implemented-pending-pr`
+- `planning` — convert designs into per-phase technical specs under `plans/<namespace>/<feature-slug>/` only; optionally flip `wip` → `ready to ship` after review for manual implementation
+- `implement` — branch from latest main, resolve open questions, implement phase plans in target repos, run `/simplify`, and mark `implemented-pending-pr`
 - `simplify` — scoped post-implementation code-quality pass
-- `evaluate` — pre-PR gate: maps acceptance criteria to code, reports gaps
-- `review-pr` — pre-merge validation (lint/format/typecheck/UI), PR title/body/score, linked-issue handling
-- `wiki-sync` — post-merge sync: creates or flips the ADR, updates wiki pages, appends the log, deletes the matching plan phase
+- `evaluate` — pre-PR gate: maps acceptance criteria to code, applies obvious fixes, reports remaining gaps
+- `review-pr` — pre-merge validation (lint/format/typecheck/UI), PR title/body/score, linked-issue handling; stamp-only PRs may merge after an explicit yes
+- `wiki-sync` — post-merge sync: creates or flips the ADR, updates wiki pages, appends the log, archives completed plan/source chains under `archive/<namespace>/plans/YYYY-MM/<feature-slug>/`
 - `wiki-query` — retrieval
 - `wiki-lint` — health checks
 - `wiki-adr` — ad-hoc architecture decisions captured outside `/planning`
