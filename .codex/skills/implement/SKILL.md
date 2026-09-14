@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Implement one or more phase plans in the target implementation repo. Can be used directly on wip plans: checks open questions, asks the user to resolve or route them one by one, locks the plan, implements the scoped work, runs /simplify, and marks the phase implemented-pending-pr. Use when the user says "/implement", "implement this plan", "build this phase", "start phase implementation", or asks to turn a phase plan into code.
+description: Implement one or more phase plans in the target implementation repo. Branches from latest main first. Can be used directly on wip plans: checks open questions, asks the user to resolve or route them one by one, locks the plan, implements the scoped work, runs /simplify, and marks the phase implemented-pending-pr. Use when the user says "/implement", "implement this plan", "build this phase", "start phase implementation", or asks to turn a phase plan into code.
 ---
 
 # Implement
@@ -30,6 +30,7 @@ If no plan is named, list plausible active plan folders under `plans/` and ask o
 - Treat plan files as the source of implementation scope. Do not expand scope unless the user explicitly asks.
 - Preserve unrelated user changes in every repo.
 - Do not implement code until every open question in the target phase is resolved in-place, routed to tests, or routed to backlog.
+- Do not implement on the default branch or a stale local branch. Cut a fresh feature branch from the latest `origin/main` (or the configured base) first.
 - Mark phases `implemented-pending-pr` after implementation and `/simplify` complete. `/evaluate` may also set this status when the user implemented the phase themselves.
 - Do not create PRs, write PR summaries, archive plan files, or run wiki-sync tools.
 
@@ -65,21 +66,62 @@ An artifact-only PR is not implementation evidence. Do not treat `status: pr-ope
 
 When locking a plan, keep edits limited to lifecycle status, question routing, and any directly required in-place answers.
 
-## Step 3 - Implement
+## Step 3 - Branch from Latest Main
+
+Before writing any code, ensure the implementation repo is on a fresh feature branch cut from the latest default branch. Do not skip this step even if the local copy appears current, and do not implement on the default branch directly or on a stale branch.
+
+Treat `main` as the default base unless `repos.yaml` or the target repo documents another base branch.
 
 1. Move to the target implementation repo resolved from `repos.yaml`.
-2. Read applicable engineering principles from `wiki/<namespace>/principles/<repo>/engineering.md` when present, then read local repo instructions (`AGENTS.md`, `CLAUDE.md`, `.cursor/rules`, or path-specific guidance) before editing.
-3. Implement the smallest code change that satisfies the phase plan.
-4. Add or update tests when the plan calls for them or when risk warrants coverage.
-5. Run the most relevant lightweight checks for the touched area when practical.
+2. Confirm a clean working tree:
 
-## Step 4 - Post-Implementation Simplify
+   ```sh
+   git status --porcelain
+   ```
+
+   - If non-empty, stop and ask the user to stash, commit, or discard changes first. Do not destroy uncommitted work. Preserve unrelated user changes per the Rules section.
+
+3. Fetch and fast-forward local `main` (or the configured base):
+
+   ```sh
+   git fetch origin main
+   git checkout main
+   git pull --ff-only origin main
+   ```
+
+   - If `git pull --ff-only` fails (local `main` has diverged), stop and surface the divergence to the user. Do not auto-merge or auto-rebase `main`.
+
+4. Verify local `main` matches `origin/main`:
+
+   ```sh
+   git rev-parse HEAD
+   git rev-parse origin/main
+   ```
+
+   - The two SHAs must be identical. If they differ, repeat step 3 or stop and ask the user before continuing.
+
+5. Derive a feature branch name from the plan slug (e.g. `<feature-slug>/<phase-slug>`) or follow repo conventions if present, then create it:
+
+   ```sh
+   git checkout -b <branch-name>
+   ```
+
+   - If a branch with that name already exists, ask the user whether to reuse, rename, or pick a different name. Do not silently check out an existing branch.
+
+## Step 4 - Implement
+
+1. Read applicable engineering principles from `wiki/<namespace>/principles/<repo>/engineering.md` when present, then read local repo instructions (`AGENTS.md`, `CLAUDE.md`, `.cursor/rules`, or path-specific guidance) before editing.
+2. Implement the smallest code change that satisfies the phase plan.
+3. Add or update tests when the plan calls for them or when risk warrants coverage.
+4. Run the most relevant lightweight checks for the touched area when practical.
+
+## Step 5 - Post-Implementation Simplify
 
 After code changes are complete, invoke `/simplify` on the changed files or implementation diff if that skill is available.
 
 Apply clear `/simplify` fixes that preserve behavior. If `/simplify` surfaces valid findings that are broader than this phase, report them as deferred; do not widen the implementation.
 
-## Step 5 - Mark Implemented Pending PR
+## Step 6 - Mark Implemented Pending PR
 
 After implementation and `/simplify` are complete, add or update the implemented phase frontmatter:
 
@@ -89,7 +131,7 @@ status: implemented-pending-pr
 
 Preserve `namespace`, `source_dump`, `artifact_pr`, `related_pr`, and `wiki_log` fields. Do not stamp `related_pr`; `/review-pr` owns that after an implementation or workflow-deliverable PR exists.
 
-## Step 6 - Output
+## Step 7 - Output
 
 Finish with:
 
