@@ -67,7 +67,7 @@ A single-product team can start with one product zone plus `platform` and `gener
 - Promote decisions into ADRs when they begin constraining implementation.
 - Keep pages cross-linked and source-backed where possible.
 - Record meaningful maintenance in [`wiki/logs/index.md`](wiki/logs/index.md).
-- Use the reusable skills in [`.agents/skills/`](.agents/skills/) for consistent brainstorm, planning, evaluation, review, sync, query, lint, ADR, runbook, and chat-derived workflow learning.
+- Use the reusable skills in [`.agents/skills/`](.agents/skills/) for consistent brainstorm, planning, evaluation, review, sync, query, lint, ADR, runbook, chat-derived workflow learning, backlog triage, and sibling-repo main sync.
 
 ## Inbox and Fragment Handling
 
@@ -76,6 +76,7 @@ Capture rough thoughts in [`inbox/fragments.md`](inbox/fragments.md). Also use:
 - [`inbox/chats.md`](inbox/chats.md) — meeting and chat takeaways
 - [`inbox/screenshots.md`](inbox/screenshots.md) — visual references
 - [`inbox/dump/`](inbox/) — brainstorm documents from `/brainstorm` (created lazily)
+- [`inbox/mocks/`](inbox/) — HTML layout sketches from `/brainstorm-design` (created lazily)
 - [`inbox/open-questions.md`](inbox/open-questions.md) — unresolved questions
 - [`inbox/claims.md`](inbox/claims.md) — assertions needing source review
 - [`inbox/threads.md`](inbox/threads.md) — durable synthesis from ongoing discussions
@@ -83,6 +84,8 @@ Capture rough thoughts in [`inbox/fragments.md`](inbox/fragments.md). Also use:
 Inbox material is human-curated. Skim it periodically and promote ideas through the workflow:
 
 - The idea is worth thinking through → `/brainstorm` produces a structured exploration doc into `inbox/dump/`.
+- The question is visual (placement, layout, states) → `/brainstorm-design` produces a lightweight HTML sketch into `inbox/mocks/`.
+- The thesis might be a thin wrapper → `/pressure-test` before `/planning`.
 - The brainstorm solidifies into something to build → `/planning` writes phase specs into `plans/<namespace>/<feature-slug>/` (status `wip`). If the user plans to implement manually, `/planning` can resolve open questions and flip the phase to `ready to ship`.
 - Implementation starts → `/implement` can run directly on a `wip` phase, asks the user to resolve or route open questions one by one, writes code in the target repo, runs `/simplify` when available, and marks the phase `implemented-pending-pr`.
 - Implementation is verified → `/evaluate` maps acceptance criteria to code and reports gaps before `/review-pr`, especially when the user implemented the phase manually.
@@ -156,6 +159,8 @@ The package includes agent-readable skills in [.agents/skills](.agents/skills):
 
 - `setup-brain` — one-time onboarding: configure a fresh template or migrate an existing wiki, and install skill copies for the team's agent tools
 - `brainstorm` — explore ideas before planning
+- `brainstorm-design` — lightweight HTML layout sketch before planning
+- `pressure-test` — 1% rule: test whether an end-to-end outcome is defensible before planning
 - `planning` — convert designs into per-phase technical specs; optionally flip `wip` → `ready to ship` after review for manual implementation
 - `implement` — resolve open questions, implement phase plans in target repos, run `/simplify`, and mark `implemented-pending-pr`
 - `simplify` — scoped post-implementation code-quality pass
@@ -171,6 +176,9 @@ The package includes agent-readable skills in [.agents/skills](.agents/skills):
 - `pr-score-log` — list merged PR scores from `review-pr` bodies
 - `rebase-onto-main` — safely rebase feature branches onto the configured base branch
 - `lifecycle-audit` — report-first audit for old lifecycle files
+- `backlog-triage` — report-first triage of orphan `tests.md` and `inbox/backlog.md`
+- `brain-update` — sync sibling local mains from origin; rebase feature branches only after confirmation
+- `caveman` — ultra-compressed communication mode
 - `skills-sync` — sync registered skills from this repo to configured agent surfaces
 
 When adapting this template, keep skill descriptions generic enough to work across teams, but update examples or section names if your wiki structure changes.

@@ -5,7 +5,7 @@
 [![Works with Claude Code](https://img.shields.io/badge/Claude%20Code-ready-d97757)](https://claude.com/claude-code)
 [![Works with Cursor](https://img.shields.io/badge/Cursor-ready-3b82f6)](https://cursor.com)
 [![Works with Codex](https://img.shields.io/badge/Codex-ready-10a37f)](https://openai.com/codex)
-[![Skills](https://img.shields.io/badge/agent%20skills-18-8b5cf6)](.agents/README.md)
+[![Skills](https://img.shields.io/badge/agent%20skills-23-8b5cf6)](.agents/README.md)
 
 Team-Brain is a reusable knowledge system for teams working across multiple repositories. It is the **synthesis layer**: repo-local docs stay authoritative for implementation details, while this repo preserves how the product concept, architecture, decisions, operations, and open questions fit together — and ships the agent skills that run a full idea-to-wiki development loop on top of it.
 
@@ -75,6 +75,8 @@ Wiki knowledge is routed into **zones** so distinct product domains never mix on
 |---|---|---|
 | `setup-brain` | `/setup-brain` | One-time (re-runnable) onboarding. **New brain**: guided fill-in of `repos.yaml`, namespaces, zones, and template placeholders. **Existing brain**: report-first migration of an existing wiki into this structure. Manages skill mirrors per agent tool and delegates implementation-repo installs to `/skills-sync`. |
 | `brainstorm` | `/brainstorm <topic>` | Explore a problem before building. Saves to `inbox/dump/` on request with lifecycle frontmatter. |
+| `brainstorm-design` | `/brainstorm-design <topic>` | Lightweight HTML layout sketch before planning. Saves to `inbox/mocks/` on request. |
+| `pressure-test` | `/pressure-test <topic>` | 1% rule: is the end-to-end outcome defensible, or a thin wrapper? Saves to `strategy/pressure-tests/` on request. |
 | `planning` | `/planning <intent>` | Three-phase gate. Phase 1: propose breakdown (approval gate). Phase 2: write phase specs to `plans/<namespace>/<feature-slug>/` at `status: wip`. Phase 3: flip a phase to `ready to ship` only after every open question is resolved or routed. |
 | `implement` | `/implement <phase>` | Implements a phase in the target repo resolved from `repos.yaml`. Resolves open questions on `wip` plans one by one, runs `/simplify`, marks the phase `implemented-pending-pr`. |
 | `simplify` | `/simplify <paths>` | Scoped code-quality pass for recently changed code. Preserves behavior. |
@@ -90,6 +92,9 @@ Wiki knowledge is routed into **zones** so distinct product domains never mix on
 | `pr-score-log` | `/pr-score-log` | Table of merged PRs and their `review-pr` scores. |
 | `rebase-onto-main` | `/rebase-onto-main` | Safe rebase onto the configured base branch with an audit report. |
 | `lifecycle-audit` | `/lifecycle-audit` | Report-first cleanup for historical ideas, plans, and metadata backfill — including artifact-PR migration for files that predate the contract. |
+| `backlog-triage` | `/backlog-triage` | Report-first triage of orphan `tests.md` files and `inbox/backlog.md`. Classifies entries (`watch` / `decide` / `chore` / `parked`) and migrates only after approval. |
+| `brain-update` | `/brain-update` | Sync every sibling local main from origin via `repos.yaml`. Asks once before rebasing feature branches. |
+| `caveman` | `/caveman` | Ultra-compressed communication mode. Syncable to implementation repos. |
 | `skills-sync` | `/skills-sync` | Admin: sync registered skills across repos and agent surfaces while preserving repo-specific customization. |
 
 Full reference: [.agents/README.md](.agents/README.md)
@@ -106,7 +111,8 @@ team-brain/
 ├── inbox/                          # everything pre-implementation
 │   ├── fragments.md, chats.md, screenshots.md, threads.md
 │   ├── open-questions.md, claims.md, backlog.md
-│   └── dump/                       # /brainstorm outputs (created lazily)
+│   ├── dump/                       # /brainstorm outputs (created lazily)
+│   └── mocks/                      # /brainstorm-design HTML sketches (created lazily)
 ├── plans/                          # active phase specs from /planning
 │   └── _template/phase-N.md
 ├── archive/                        # completed lifecycle chains (created lazily)
@@ -135,7 +141,7 @@ team-brain/
 /wiki-query which decisions affect <area>?
 ```
 
-**When an idea surfaces** — explore it with `/brainstorm`; the saved dump is the bridge from "vague idea" to "ready for `/planning`". Raw half-thoughts go straight into `inbox/fragments.md` or `inbox/chats.md`.
+**When an idea surfaces** — explore it with `/brainstorm`; the saved dump is the bridge from "vague idea" to "ready for `/planning`". For layout and placement, use `/brainstorm-design`. Pressure-test a product thesis with `/pressure-test` before planning. Raw half-thoughts go straight into `inbox/fragments.md` or `inbox/chats.md`.
 
 **When it solidifies** — `/planning` writes one spec per phase under `plans/<namespace>/<feature-slug>/`, each at `status: wip` with open questions tracked explicitly. Nothing flips to `ready to ship` until every question is resolved in-place, routed to `tests.md` (empirical), or routed to `inbox/backlog.md` (deferred).
 
@@ -143,7 +149,7 @@ team-brain/
 
 **After merge** — `/wiki-sync <pr>` turns the merged PR into durable knowledge: ADR created or flipped to `accepted`, zone pages updated, tunable knobs preserved, the completed plan/idea chain archived under `archive/<namespace>/`. Incomplete chains stay active — a source idea is never archived while linked phases remain unfinished.
 
-**Periodically** — `/wiki-lint` for wiki health, `/lifecycle-audit` for historical cleanup, `/workflow-from-chats` to turn repeated feedback into durable workflow rules.
+**Periodically** — `/wiki-lint` for wiki health, `/lifecycle-audit` for historical cleanup, `/backlog-triage` for orphan `tests.md` and deferred questions, `/brain-update` to sync local mains, `/workflow-from-chats` to turn repeated feedback into durable workflow rules.
 
 ## 🧭 Rule of Thumb
 
