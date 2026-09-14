@@ -17,6 +17,8 @@ Agents should use these skills when the user's request matches the skill descrip
 | Skill | Use When |
 |---|---|
 | `brainstorm` | Exploring a problem or idea before committing to a plan. Surfaces goals, constraints, options, and open questions. Saves to `inbox/dump/` on request. |
+| `brainstorm-design` | Lightweight HTML layout sketch before planning. Saves to `inbox/mocks/` on request. Lives only in the brain repo. |
+| `pressure-test` | Testing whether an end-to-end customer outcome is defensible under the 1% rule before planning. Saves to `strategy/pressure-tests/` on request. Lives only in the brain repo. |
 | `planning` | Turning an implementation intent (or a `brainstorm` output) into one or more detailed phase specs in `plans/<namespace>/<feature-slug>/`. Three-phase gate: (1) propose breakdown and pause, (2) write specs at `status: wip`, (3) optionally flip a phase to `status: ready to ship` after review when the user wants to implement manually. |
 
 ### PR Workflow
@@ -31,6 +33,12 @@ Agents should use these skills when the user's request matches the skill descrip
 | `create-bug-issue` | Captures a bug in the appropriate GitHub repo with the `bug` label. |
 | `pr-score-log` | Lists merged PRs and the `review-pr` total score from each PR body. |
 | `rebase-onto-main` | Safely rebases a feature branch onto the configured base branch and writes an audit report. |
+
+### Communication
+
+| Skill | Use When |
+|---|---|
+| `caveman` | Ultra-compressed communication mode. Can be synced into implementation repos via `/skills-sync`. |
 
 ### Wiki Retrieval & Maintenance
 
@@ -47,6 +55,8 @@ Agents should use these skills when the user's request matches the skill descrip
 |---|---|
 | `workflow-from-chats` | Mining recent chats or pasted excerpts for durable workflow preferences. Routes each finding to the right artifact: skill update, wiki/runbook note, planning/spec guidance, inbox follow-up, or no change. |
 | `lifecycle-audit` | Report-first cleanup for old brainstorms, plans, PR evidence, archives, and sync logs. Applies changes only after explicit approval. |
+| `backlog-triage` | Report-first triage of orphan `plans/**/tests.md` and `inbox/backlog.md`. Classifies entries and migrates only after approval. Lives only in the brain repo. |
+| `brain-update` | Syncs every sibling local main from origin using `repos.yaml`. Asks once before rebasing feature branches. Lives only in the brain repo. |
 | `skills-sync` | Admin workflow for syncing registered skills from this repo to configured agent surfaces while preserving repo-specific customization. |
 
 ### Typical Workflow Sequence
@@ -57,7 +67,7 @@ Agents should use these skills when the user's request matches the skill descrip
 
 Each skill owns one verb: **/implement** resolves questions and writes code from a plan, **/evaluate** verifies manually implemented work (code ↔ plan), **/review-pr** validates and packages (lint/typecheck/UI + PR title/body/score), **/wiki-sync** ingests (ADR + wiki pages + lifecycle archive).
 
-For ongoing inbox hygiene, skim `inbox/fragments.md` periodically and `/brainstorm` promising ideas (or delete dead ones). Use `/workflow-from-chats` when repeated chat feedback should become durable workflow guidance. For periodic health, run `/wiki-lint`.
+For ongoing inbox hygiene, skim `inbox/fragments.md` periodically and `/brainstorm` promising ideas (or delete dead ones). Use `/workflow-from-chats` when repeated chat feedback should become durable workflow guidance. For periodic health, run `/wiki-lint` and `/backlog-triage`. Use `/brain-update` to pull sibling mains. Use `/caveman` when you want compressed replies.
 
 Use `/lifecycle-audit` for historical cleanup that predates the lifecycle metadata model. Use `/skills-sync` only from the skills-home repo, usually this repo.
 

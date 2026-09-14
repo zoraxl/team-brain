@@ -31,6 +31,14 @@ Managed skills:
 - `create-bug-issue`
 - `simplify`
 - `lifecycle-audit`
+- `caveman`
+
+Not managed here (do not sync brain-only skills into implementation repos):
+
+- `brain-update` — brain-only; syncs sibling local mains from origin.
+- `brainstorm-design` — brain-only; writes lightweight HTML layout sketches to `inbox/mocks/`.
+- `pressure-test` — brain-only; writes strategy pressure tests.
+- `backlog-triage` — brain-only; triages `plans/**/tests.md` and `inbox/backlog.md`.
 
 When the user names a skill, sync only that skill. When no skill is named, evaluate all registered skills.
 
@@ -47,7 +55,7 @@ Use `add` when the user wants a new skill to be managed by `skills-sync`.
 5. If the source exists, run the normal sync workflow for that skill.
 6. If the source does not exist, stop after registration only if the user explicitly asked to register a future skill; otherwise ask for the source path.
 
-Do not add `skills-sync` or `setup-brain` to the registered list; they are admin/onboarding skills and should stay local to the skills-home repo.
+Do not add `skills-sync`, `setup-brain`, `brain-update`, `brainstorm-design`, `pressure-test`, or `backlog-triage` to the registered list; they are admin/onboarding/brain-only skills and should stay local to the skills-home repo.
 
 ## Repo Targets
 
